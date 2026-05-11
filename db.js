@@ -1,46 +1,19 @@
-import { supabase } from './supabaseClient.js'
+// Legacy Supabase client - DEPRECATED
+// Project now uses Firebase instead
 
-// Test connection (call manually)
 export async function testConnection() {
-  const { data, error } = await supabase
-    .from('users')
-    .select('*')
-    .limit(5)
-
-  if (error) {
-    console.log("Connection failed:", error.message)
-    return null
-  }
-
-  console.log("Connected to Supabase:", data)
-  return data
+  console.log("Supabase deprecated - using Firebase")
+  return null
 }
 
-// Fetch requests (Vora core feature)
 export async function getRequests() {
-  const { data, error } = await supabase
-    .from('requests')
-    .select('*')
-
-  if (error) {
-    console.log("Fetch error:", error.message)
-    return []
-  }
-
-  return data
+  console.log("Supabase deprecated - using Firebase")
+  return []
 }
 
-// Insert request
+
+// Insert request - DEPRECATED
 export async function createRequest(request) {
-  const { data, error } = await supabase
-    .from('requests')
-    .insert([request])
-    .select()
-
-  if (error) {
-    console.log("Insert error:", error.message)
-    return null
-  }
-
-  return data
+  console.log("Supabase deprecated - using Firebase")
+  return null
 }
