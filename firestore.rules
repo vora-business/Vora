@@ -98,9 +98,18 @@ service cloud.firestore {
       allow read, write, delete: if request.auth != null;
     }
 
+    // Notifications - allow authenticated users to create and read all notifications
+    match /notifications/{notificationId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && 
+                              request.auth.uid == resource.data.userId;
+    }
+
     // Settings collection for platform configuration
     match /settings/{settingId} {
-      allow read, write, delete: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write, delete: if request.auth != null;
     }
 
     // Request pools - allow authenticated users

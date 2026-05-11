@@ -5,25 +5,13 @@ import {
   where,
   onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-let badgeEl = document.getElementById("notificationBadge");
+const badge = document.getElementById("notificationBadge");
+
 let currentUser = null;
 
-// fallback safety
-function safeShowBadge(count) {
-  if (!badgeEl) return;
-
-  if (count > 0) {
-    badgeEl.textContent = count;
-    badgeEl.classList.remove("hidden");
-  } else {
-    badgeEl.classList.add("hidden");
-  }
-}
-
-// AUTH LISTENER
+// ========== AUTH ==========
 onAuthStateChanged(auth, (user) => {
   if (!user) return;
 
@@ -31,17 +19,38 @@ onAuthStateChanged(auth, (user) => {
   listenNotifications();
 });
 
-// REAL-TIME FIRESTORE LISTENER
+// ========== REAL-TIME LISTENER ==========
 function listenNotifications() {
-  if (!currentUser) return;
-
   const q = query(
     collection(db, "notifications"),
     where("userId", "==", currentUser.uid),
-    where("status", "==", "unread")
+    where("read", "==", false)
   );
 
   onSnapshot(q, (snapshot) => {
-    safeShowBadge(snapshot.size);
+
+    const unreadCount = snapshot.size;
+
+    updateBadge(unreadCount);
   });
+}
+
+// ========== UPDATE BADGE UI ==========
+function updateBadge(count) {
+
+  if (!badge) return;
+
+  if (count <= 0) {
+    badge.classList.add("hidden");
+    return;
+  }
+
+  badge.classList.remove("hidden");
+  badge.textContent = count > 99 ? "99+" : count;
+  
+  // Add pulse animation for new notifications
+  badge.classList.add("animate-pulse");
+  setTimeout(() => {
+    badge.classList.remove("animate-pulse");
+  }, 3000);
 }

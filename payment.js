@@ -1,5 +1,6 @@
 import { LoadingSpinner } from './loading-utils.js';
 import { auth, db } from './firebase-config.js';
+import { NotificationService } from './notification-service.js';
 import {
     doc,
     getDoc,
@@ -12,22 +13,10 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // Helper function to create notifications
+let currentUser = null;
+
 async function createNotification(recipientId, type, title, message, metadata = {}) {
-  try {
-    const notifRef = doc(collection(db, 'notifications'));
-    await setDoc(notifRef, {
-      recipientId,
-      type,
-      title,
-      message,
-      metadata,
-      isRead: false,
-      isDeleted: false,
-      createdAt: serverTimestamp()
-    });
-  } catch (error) {
-    console.error('Error creating notification:', error);
-  }
+  return NotificationService.createNotification(recipientId, type, title, message, metadata, currentUser?.uid);
 }
 
 // Get platform settings
