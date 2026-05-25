@@ -198,12 +198,7 @@ function renderReviewSummary(reviews) {
 
 function renderReviews(reviews) {
   if (!reviews.length) {
-    reviewsContainer.innerHTML = `
-      <div class="text-center py-6 text-gray-500">
-        <p class="font-semibold">No reviews yet</p>
-        <p class="text-sm mt-1">Be the first to review this service.</p>
-      </div>
-    `;
+    reviewsContainer.innerHTML = '';
     return;
   }
 
