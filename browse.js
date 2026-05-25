@@ -236,7 +236,7 @@ async function fetchReviews() {
             .from("reviews")
             .select(`
                 *,
-                profiles (
+                user_profile:user_id (
                     full_name,
                     profile_picture
                 )
@@ -245,6 +245,8 @@ async function fetchReviews() {
             .order("created_at", { ascending: false });
 
         if (error) throw error;
+
+        console.log(`Loaded ${reviewsData?.length || 0} reviews for ${serviceIds.length} services`);
 
         reviewStatsMap = {};
         reviewsMap = {};
@@ -275,6 +277,8 @@ async function fetchReviews() {
                 reviewsMap[serviceId] = [];
             }
 
+            // Normalize the profile data
+            review.profiles = Array.isArray(review.user_profile) ? review.user_profile[0] : review.user_profile;
             reviewsMap[serviceId].push(review);
         });
 
@@ -294,7 +298,16 @@ async function fetchReviews() {
     } catch (error) {
 
         console.error("Failed to fetch reviews:", error);
+        console.error("Error details:", error?.message);
     }
+}
+
+// =========================
+// CLEAR CACHE (used after review submission)
+// =========================
+function clearReviewCache() {
+    localStorage.removeItem(CACHE_KEY + "_time");
+    console.log("Review cache cleared");
 }
 
 // =========================

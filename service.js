@@ -370,6 +370,9 @@ function renderReviewForm(service, existingReviews) {
         throw insertError;
       }
 
+      // Clear browse cache so new review appears immediately
+      localStorage.removeItem('browse_services_cache_time');
+
       alert('Review submitted successfully');
       await loadService();
     } catch (err) {
