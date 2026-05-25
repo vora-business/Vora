@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
       category,
       price,
       location,
-      updated_at: new Date().toISOString(),
+
     };
 
     try {
@@ -80,28 +80,37 @@ document.addEventListener('DOMContentLoaded', () => {
           return;
         }
 
-        // Upload to Supabase Storage bucket "services"
-        // Store with a predictable unique key:
-        const fileExt = getFileExt(file.name);
-        const fileName = `${authData.user.id}/${serviceId}/${crypto.randomUUID()}${fileExt}`;
-
-        const { error: uploadErr } = await supabase.storage
-          .from('services')
-          .upload(fileName, file, { upsert: true });
-
-        if (uploadErr) {
-          console.error(uploadErr);
-          throw new Error('Image upload failed.');
+        // Validate file size (10MB)
+        if (file.size > 10 * 1024 * 1024) {
+          alert('Image must be less than 10MB.');
+          return;
         }
 
-        // Get public URL (only works if your bucket is public or you handle auth-based URLs)
+        // Upload to Supabase Storage bucket "services"
+        const fileName = `${authData.user.id}_${Date.now()}_${file.name}`;
+
+        const { data, error: uploadErr } = await supabase.storage
+          .from('services')
+          .upload(fileName, file);
+
+        if (uploadErr) {
+          console.error('Image upload error:', uploadErr);
+          console.error('File name:', fileName);
+          console.error('File size:', file.size);
+          console.error('File type:', file.type);
+          throw new Error(`Image upload failed: ${uploadErr.message || uploadErr}`);
+        }
+
+        // Get public URL
         const { data: publicUrlData } = supabase.storage
           .from('services')
           .getPublicUrl(fileName);
 
-        imageUrl = publicUrlData.publicUrl;
+        imageUrl = publicUrlData?.publicUrl;
 
-        payloadBase.image_url = imageUrl;
+        if (imageUrl) {
+          payloadBase.image_url = imageUrl;
+        }
       }
 
       // Update service
@@ -112,7 +121,10 @@ document.addEventListener('DOMContentLoaded', () => {
         .eq('provider_id', authData.user.id);
 
       if (updateErr) {
-        console.error(updateErr);
+        console.error('Update error:', updateErr);
+        console.error('Payload sent:', payloadBase);
+        console.error('Service ID:', serviceId);
+        console.error('Provider ID:', authData.user.id);
         throw updateErr;
       }
 
@@ -120,8 +132,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // Redirect back to a page (adjust if you have a specific route)
       window.location.href = 'home.html';
     } catch (err) {
-      console.error(err);
-      alert('Failed to update service. Please try again.');
+      console.error('Full error:', err);
+      alert(`Failed to update service: ${err.message || 'Please try again.'}`);
     }
   });
 });
