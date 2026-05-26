@@ -249,7 +249,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           () => {
 
             window.location.href =
-              `service-details.html?id=${service.id}`;
+              `Register.html?service_id=${service.id}`;
           }
         );
 
@@ -268,7 +268,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         'col-span-full text-center mt-10';
 
       exploreWrapper.innerHTML = `
-        <a href="browse.html"
+        <a href="register.html"
           class="inline-block bg-black text-white px-8 py-3 rounded-lg font-semibold hover:bg-gray-800 transition">
           Explore All Services →
         </a>
