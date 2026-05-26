@@ -5,6 +5,17 @@
 import { supabase } from "./supabase.js";
 
 // ===============================
+// CHECK SESSION - REDIRECT IF LOGGED IN
+// ===============================
+
+const { data: { session } } = await supabase.auth.getSession();
+
+if (session) {
+  // User is already logged in, redirect to home
+  window.location.href = 'home.html';
+} 
+
+// ===============================
 // GLOBAL ELEMENTS
 // ===============================
 
