@@ -1,5 +1,6 @@
 import { testConnection, getRequests } from './db.js'
 import { initializeRouter } from './router.js'
+import { updateProfilePictureInHeader } from './auth.js'
 
 // Run app when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
@@ -12,6 +13,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Load requests into UI
   loadRequests()
+
+  // Update profile picture in header
+  await updateProfilePictureInHeader()
 }) 
 
 // Render requests to page 

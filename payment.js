@@ -1,4 +1,5 @@
 import { supabase } from './supabase.js';
+import { updateProfilePictureInHeader } from './auth.js';
 
 function normalizeProfile(profile) {
     if (!profile) return null;
@@ -6,6 +7,9 @@ function normalizeProfile(profile) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+
+  // Update profile picture in header
+  await updateProfilePictureInHeader();
 
   // =========================
   // PAYSTACK KEY

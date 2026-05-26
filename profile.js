@@ -1,4 +1,5 @@
 import { supabase } from "./supabase.js";
+import { updateProfilePictureInHeader } from "./auth.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
 
@@ -161,6 +162,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             alert("Profile picture uploaded successfully");
 
+            // Update header profile picture
+            await updateProfilePictureInHeader();
+
         } catch (error) {
 
             console.error(error);
@@ -207,6 +211,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             alert("Profile picture removed");
 
+            // Update header profile picture
+            await updateProfilePictureInHeader();
+
         } catch (error) {
 
             console.error(error);
@@ -241,7 +248,21 @@ document.addEventListener("DOMContentLoaded", async () => {
                 throw error;
             }
 
+            // Also update users table for consistency
+            await supabase
+                .from("users")
+                .update({
+                    full_name: nameInput.value.trim(),
+                    phone: phoneInput.value.trim(),
+                    location: locationInput.value.trim(),
+                    profile_picture: currentProfilePicture
+                })
+                .eq("id", currentUser.id);
+
             alert("Profile updated successfully");
+
+            // Update header profile picture
+            await updateProfilePictureInHeader();
 
         } catch (error) {
 

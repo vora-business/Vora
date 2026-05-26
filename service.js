@@ -138,11 +138,103 @@ async function loadService() {
       };
     }
 
+    renderReviewSummary(reviews || []);
+    renderReviews(reviews || []);
+
   } catch (err) {
     console.error(err);
     serviceContainer.innerHTML =
       `<p class="text-red-600">Failed to load service</p>`;
   }
+}
+
+// ============================
+// REVIEW SUMMARY (Display Only)
+// ============================
+
+function renderReviewSummary(reviews) {
+  if (!serviceReviewsWrapper) return;
+
+  let summary = document.getElementById('review-summary');
+  if (!summary) {
+    summary = document.createElement('div');
+    summary.id = 'review-summary';
+    summary.className = 'mb-6';
+    const title = serviceReviewsWrapper.querySelector('h2');
+    if (title) {
+      title.insertAdjacentElement('afterend', summary);
+    } else {
+      serviceReviewsWrapper.prepend(summary);
+    }
+  }
+
+  if (!reviews.length) {
+    summary.innerHTML = `
+      <div class="px-4 py-3 rounded-lg bg-gray-50 border border-gray-200">
+        <p class="text-sm text-gray-600">This service has not been reviewed yet. Be the first to book and share your experience!</p>
+      </div>
+    `;
+    return;
+  }
+
+  const total = reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0);
+  const count = reviews.length;
+  const avg = (total / count).toFixed(1);
+  const stars = '★'.repeat(Math.round(avg)) + '☆'.repeat(5 - Math.round(avg));
+
+  summary.innerHTML = `
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-4 rounded-lg bg-gray-50 border border-gray-200">
+      <div>
+        <div class="text-lg font-semibold text-gray-900">${avg}/5</div>
+        <div class="text-sm text-gray-600">${stars} · ${count} review${count > 1 ? 's' : ''}</div>
+      </div>
+      <div class="text-sm text-gray-600">Rating from verified bookings.</div>
+    </div>
+  `;
+}
+ 
+// ============================ 
+// RENDER REVIEWS (Display Only)
+// ============================
+
+function renderReviews(reviews) {
+  if (!reviews.length) {
+    reviewsContainer.innerHTML = '';
+    return;
+  }
+
+  reviewsContainer.innerHTML = '';
+
+  reviews.forEach(r => {
+    const reviewer = normalizeProfile(r.user_profile) || r.user_profile || null;
+    const card = document.createElement('div');
+
+    card.className = 'border-b py-4 flex gap-3 review-card';
+
+    card.innerHTML = `
+      <img
+        src="${reviewer?.profile_picture || reviewer?.avatar_url || 'https://placehold.co/50x50'}"
+        class="w-10 h-10 rounded-full object-cover"
+      />
+
+      <div class="flex-1">
+        <p class="font-semibold text-gray-900">
+          ${reviewer?.full_name || reviewer?.email || 'Anonymous'}
+        </p>
+
+        <div class="flex items-center gap-2 text-sm text-gray-600">
+          <span>${'⭐'.repeat(r.rating || 0)}</span>
+          <span>${new Date(r.created_at).toLocaleDateString()}</span>
+        </div>
+
+        <p class="text-gray-700 mt-2">
+          ${r.comment || ''}
+        </p>
+      </div>
+    `;
+
+    reviewsContainer.appendChild(card);
+  });
 }
 
 // ============================

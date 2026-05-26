@@ -151,6 +151,9 @@ if (loginForm) {
 
       if (error) throw error;
 
+      // Update profile picture in header before redirecting
+      await updateProfilePictureInHeader();
+
       window.location.href = "home.html";
     } catch (error) {
       console.error("Login error:", error);
@@ -371,6 +374,38 @@ if (logoutBtnSideMenu) {
 // ===============================
 // EXPORT
 // ===============================
+
+// Update profile picture in header
+export async function updateProfilePictureInHeader() {
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData?.session?.user?.id) return;
+
+    const { data: userProfile, error } = await supabase
+      .from("users")
+      .select("profile_picture")
+      .eq("id", sessionData.session.user.id)
+      .single();
+
+    if (error || !userProfile) return;
+
+    // Update all profile icon elements in headers
+    const profileIcons = document.querySelectorAll('[data-profile-icon="true"]');
+    profileIcons.forEach(icon => {
+      if (userProfile.profile_picture) {
+        // Replace with image
+        icon.innerHTML = `<img src="${userProfile.profile_picture}" class="w-full h-full rounded-full object-cover" alt="Profile" />`;
+        icon.classList.remove('bg-gray-300');
+      } else {
+        // Keep default emoji if no picture
+        icon.innerHTML = '👤';
+        icon.classList.add('bg-gray-300');
+      }
+    });
+  } catch (error) {
+    console.error("Failed to update profile picture:", error);
+  }
+}
 
 // Export for use in other files
 export { supabase };
