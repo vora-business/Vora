@@ -28,25 +28,50 @@
         <!-- DESKTOP NAV -->
         <nav class="hidden lg:flex items-center gap-6">
 
-          <a href="home.html"
-            class="font-semibold text-black-600">
-            Home
-          </a>
+    <a href="dashboard.html" 
+      class="block font-semibold text-black-600">
+      Dashboard
+    </a>
 
-          <a href="browse.html"
-            class="font-medium text-gray-700 hover:text-black-600 transition">
-            Browse
-          </a>
+    <a href="browse.html" 
+      class="block font-semibold text-black-600">
+      Browse
+    </a>
 
-              <a href="my-messages.html"
-      class="block font-semibold text-black-800">
+    <a href="my-services.html" 
+      class="block font-semibold text-black-600">
+      My Services
+    </a> 
+
+    <a href="add-service.html" 
+      class="block font-semibold text-black-600">
+      Become a Provider
+    </a>
+
+    <a href="provider-bookings.html" 
+      class="block font-semibold text-black-600"> 
+      Provider Bookings
+    </a>
+
+    <a href="schedule.html" 
+      class="block font-semibold text-black-600">
+      Schedule
+    </a>
+
+    <a href="my-messages.html" 
+      class="block font-semibold text-black-600">
       My Messages
     </a>
 
-          <a href="add-service.html"
-            class="font-medium text-gray-700 hover:text-black-600 transition">
-            Become a Provider
-          </a>
+    <a href="provider-reviews.html" 
+      class="block font-semibold text-black-600">
+      Provider Reviews
+    </a>
+
+    <a href="payout-settings.html" 
+      class="block font-semibold text-black-600">
+      Payout
+    </a>
 
         </nav>
 
@@ -67,7 +92,7 @@
         </a>
 
         <!-- LOGOUT -->
-        <button id="logoutBtn"
+        <button id="logoutBtn-payout-settings" data-logout
           class="hidden lg:block text-red-600 font-semibold hover:text-red-800 transition">
           Logout
         </button>
@@ -107,28 +132,53 @@
   <!-- LINKS -->
   <div class="p-4 space-y-5">
 
-    <a href="home.html"
-      class="block font-semibold text-black-800">
-      Home
+    <a href="dashboard.html" 
+      class="block font-semibold text-black-600">
+      Dashboard
     </a>
 
-    <a href="browse.html"
-      class="block font-semibold text-black-800">
+    <a href="browse.html" 
+      class="block font-semibold text-black-600">
       Browse
     </a>
 
-        <a href="my-messages.html"
-      class="block font-semibold text-black-800">
-      My Messages
+    <a href="my-services.html" 
+      class="block font-semibold text-black-600">
+      My Services
     </a>
 
-    <a href="add-service.html"
-      class="block font-semibold text-black-800">
+    <a href="add-service.html" 
+      class="block font-semibold text-black-600">
       Become a Provider
     </a>
 
-    <button id="logoutBtnSideMenu"
-      class="block text-red-600 font-semibold">
+    <a href="provider-bookings.html" 
+      class="block font-semibold text-black-600">
+      Provider Bookings
+    </a>
+
+    <a href="schedule.html" 
+      class="block font-semibold text-black-600">
+      Schedule
+    </a>
+
+    <a href="my-messages.html" 
+      class="block font-semibold text-black-600">
+      My Messages
+    </a>
+
+    <a href="provider-reviews.html" 
+      class="block font-semibold text-black-600">
+      Provider Reviews
+    </a>
+
+    <a href="payout-settings.html" 
+      class="block font-semibold text-black-600">
+      Payout
+    </a>
+
+    <button id="logoutBtn" 
+      class="text-red-600 font-semibold">
       Logout
     </button>
 
@@ -263,6 +313,7 @@
 
 <script src="menu.js"></script>
 <script src="main.js"></script>
+<script src="./auth.js" type="module"></script>
 <script src="schedule.js"></script>
 <script src="./router.js" type="module"></script>
 <script src="./notifications.js" type="module"></script>

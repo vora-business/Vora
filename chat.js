@@ -42,32 +42,31 @@ document.addEventListener("DOMContentLoaded", async () => {
 async function loadChatInfo() {
   const { data, error } = await supabase
     .from("chats")
-    .select(`
-      *,
-      services(title)
-    `)
+    .select("*")
     .eq("id", chatId)
     .single();
 
   if (error) {
-    console.error(error);
+    console.error("Chat Info Error:", error);
+    document.getElementById("service-title").textContent = "Chat";
     return;
   }
 
-  document.getElementById("service-title").textContent =
-    data.services?.title || "Chat";
+  // Use participants field to get the other user's ID
+  const otherUserId = data.participants;
 
-  let otherUserId =
-    data.customer_id === currentUser.id
-      ? data.provider_id
-      : data.customer_id;
-
-  const { data: profile } = await supabase
+  // Fetch the other user's profile
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("full_name")
     .eq("id", otherUserId)
-    .single();
+    .maybeSingle();
 
+  if (profileError) {
+    console.error("Profile Error:", profileError);
+  }
+
+  document.getElementById("service-title").textContent = "Direct Message";
   document.getElementById("other-user-name").textContent =
     profile?.full_name || "User";
 }

@@ -409,3 +409,12 @@ export async function updateProfilePictureInHeader() {
 
 // Export for use in other files
 export { supabase };
+
+// Ensure header icons are updated across pages when DOM is ready
+document.addEventListener("DOMContentLoaded", async () => {
+  try {
+    await updateProfilePictureInHeader();
+  } catch (err) {
+    console.error("auto updateProfilePictureInHeader failed:", err);
+  }
+});

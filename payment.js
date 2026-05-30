@@ -201,15 +201,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       confirmBtn.disabled = true;
       confirmBtn.textContent = 'Processing...';
 
+
       // =========================
-      // CREATE BOOKING
+      // CREATE BOOKING (Stage 1: Customer Books)
       // =========================
+      // Status: pending_payment
       const bookingPayload = {
         provider_id: providerId,
         user_id: currentUser.id,
         scheduled_date: scheduledDate,
         total_price: totalPrice,
-        status: 'pending',
+        status: 'pending_payment',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         ...(serviceId ? { service_id: serviceId } : {}),
@@ -225,9 +227,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       if (bookingError) throw bookingError;
 
+
       // =========================
-      // CREATE PAYMENT
+      // CREATE PAYMENT (Stage 2: Customer Pays)
       // =========================
+      // Status: pending
       const { data: payment, error: paymentError } =
         await supabase
           .from('payments')
@@ -278,11 +282,12 @@ document.addEventListener('DOMContentLoaded', async () => {
           payment_id: payment.id
         },
 
-        callback: function (response) {
 
+        // Stage 2: Payment Success
+        callback: function (response) {
           (async () => {
             try {
-
+              // Update payment to paid
               await supabase
                 .from('payments')
                 .update({
@@ -292,18 +297,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 })
                 .eq('id', payment.id);
 
+              // Update booking to paid
               await supabase
                 .from('bookings')
                 .update({
-                  status: 'confirmed',
+                  status: 'paid',
                   updated_at: new Date().toISOString()
                 })
                 .eq('id', booking.id);
 
               alert('Payment successful');
-
               window.location.href = 'my-bookings.html';
-
             } catch (err) {
               console.error(err);
             }

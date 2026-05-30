@@ -50,30 +50,16 @@ function setupLogout() {
 // LOAD BOOKINGS
 // ==========================
 async function loadBookings() {
-
-    const container =
-        document.getElementById("bookingsContainer");
+    const container = document.getElementById("bookingsContainer");
 
     try {
-
-        // LOADING
         container.innerHTML = `
             <div class="bg-white rounded-xl p-10 text-center shadow">
-
-                <div class="text-5xl mb-4">
-                    ⏳
-                </div>
-
-                <p class="text-gray-600 text-lg">
-                    Loading bookings...
-                </p>
-
+                <div class="text-5xl mb-4">⏳</div>
+                <p class="text-gray-600 text-lg">Loading bookings...</p>
             </div>
         `;
 
-        // ==========================
-        // FETCH BOOKINGS
-        // ==========================
         const { data: bookings, error } = await supabase
             .from("bookings")
             .select("*")
@@ -82,49 +68,22 @@ async function loadBookings() {
 
         if (error) throw error;
 
-        // EMPTY STATE
         if (!bookings || bookings.length === 0) {
-
             container.innerHTML = `
                 <div class="bg-white rounded-xl p-10 text-center shadow">
-
-                    <div class="text-6xl mb-4">
-                        📭
-                    </div>
-
-                    <h2 class="text-2xl font-bold text-gray-800 mb-3">
-                        No Bookings Yet
-                    </h2>
-
-                    <p class="text-gray-500">
-                        Your bookings will appear here.
-                    </p>
-
+                    <div class="text-6xl mb-4">📭</div>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-3">No Bookings Yet</h2>
+                    <p class="text-gray-500">Your bookings will appear here.</p>
                 </div>
             `;
-
             return;
         }
 
-        // ==========================
-        // FETCH PROVIDERS
-        // ==========================
-        const providerIds = [
-            ...new Set(
-                bookings
-                    .map(b => b.provider_id)
-                    .filter(Boolean)
-            )
-        ];
-
+        const providerIds = [...new Set(bookings.map(b => b.provider_id).filter(Boolean))];
         let providersById = {};
 
         if (providerIds.length > 0) {
-
-            const {
-                data: providers,
-                error: providersError
-            } = await supabase
+            const { data: providers, error: providersError } = await supabase
                 .from("users")
                 .select(`
                     id,
@@ -136,34 +95,16 @@ async function loadBookings() {
                 .in("id", providerIds);
 
             if (providersError) {
-                console.error(
-                    "Providers fetch error:",
-                    providersError
-                );
+                console.error("Providers fetch error:", providersError);
             }
 
-            providersById = Object.fromEntries(
-                (providers || []).map(provider => [
-                    String(provider.id),
-                    provider
-                ])
-            );
-
-            console.log("Providers fetched:", providers);
-            console.log("ProvidersById object:", providersById);
+            providersById = Object.fromEntries((providers || []).map(provider => [String(provider.id), provider]));
         }
 
-        // ==========================
-        // FETCH SERVICES
-        // ==========================
-        const serviceIds = bookings
-            .map(b => b.service_id)
-            .filter(Boolean);
-
+        const serviceIds = bookings.map(b => b.service_id).filter(Boolean);
         let servicesById = {};
 
         if (serviceIds.length > 0) {
-
             const { data: services } = await supabase
                 .from("services")
                 .select(`
@@ -175,25 +116,13 @@ async function loadBookings() {
                 `)
                 .in("id", serviceIds);
 
-            servicesById = Object.fromEntries(
-                (services || []).map(service => [
-                    service.id,
-                    service
-                ])
-            );
+            servicesById = Object.fromEntries((services || []).map(service => [service.id, service]));
         }
 
-        // ==========================
-        // FETCH REQUESTS
-        // ==========================
-        const requestIds = bookings
-            .map(b => b.request_id)
-            .filter(Boolean);
-
+        const requestIds = bookings.map(b => b.request_id).filter(Boolean);
         let requestsById = {};
 
         if (requestIds.length > 0) {
-
             const { data: requests } = await supabase
                 .from("requests")
                 .select(`
@@ -205,246 +134,176 @@ async function loadBookings() {
                 `)
                 .in("id", requestIds);
 
-            requestsById = Object.fromEntries(
-                (requests || []).map(request => [
-                    request.id,
-                    request
-                ])
-            );
+            requestsById = Object.fromEntries((requests || []).map(request => [request.id, request]));
         }
 
-        // CLEAR CONTAINER
         container.innerHTML = "";
 
-        // ==========================
-        // LOOP BOOKINGS
-        // ==========================
         bookings.forEach(booking => {
+            const serviceDetails = servicesById[booking.service_id];
+            const requestDetails = requestsById[booking.request_id];
+            const details = serviceDetails || requestDetails || {};
+            const provider = providersById[String(booking.provider_id)] || null;
+            const providerName = provider?.full_name || "Unknown Provider";
+            const providerEmail = provider?.email || "No Email";
+            const providerLocation = provider?.location || "Location not available";
+            const providerPicture = provider?.profile_picture && provider.profile_picture.trim() !== "" ? provider.profile_picture : `https://ui-avatars.com/api/?name=${encodeURIComponent(providerName)}&background=random`;
+            const completionAwaitingCustomer = ["completed_by_provider", "awaiting_customer_confirmation"].includes(booking.status);
 
-            console.log("Current booking:", booking);
-            console.log("Provider ID from booking:", booking.provider_id);
-
-            // SERVICE / REQUEST
-            const serviceDetails =
-                servicesById[booking.service_id];
-
-            const requestDetails =
-                requestsById[booking.request_id];
-
-            const details =
-                serviceDetails ||
-                requestDetails ||
-                {};
-
-            // PROVIDER
-            const provider =
-                providersById[String(booking.provider_id)] || null;
-
-            console.log(`Looking for provider with ID: ${String(booking.provider_id)}, found:`, provider);
-
-            const providerName =
-                provider?.full_name ||
-                "Unknown Provider";
-
-            const providerEmail =
-                provider?.email ||
-                "No Email";
-
-            const providerLocation =
-                provider?.location ||
-                "Location not available";
-
-            const providerPicture =
-                provider?.profile_picture &&
-                provider.profile_picture.trim() !== ""
-                    ? provider.profile_picture
-                    : `https://ui-avatars.com/api/?name=${encodeURIComponent(providerName)}&background=random`;
-
-            // CARD
-            const card =
-                document.createElement("div");
-
-            card.className = `
-                bg-white
-                rounded-2xl
-                shadow-md
-                p-6
-                hover:shadow-xl
-                transition
-            `;
-
+            const card = document.createElement("div");
+            card.className = `bg-white rounded-2xl shadow-md p-6 hover:shadow-xl transition`;
             card.innerHTML = `
                 <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
-
-                    <!-- LEFT -->
                     <div class="flex-1">
-
-                        <!-- PROVIDER -->
                         <div class="flex items-center gap-4 mb-5">
-
-                            <img
-                                src="${providerPicture}"
-                                alt="${providerName}"
-                                class="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
-                                onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(providerName)}'"
-                            >
-
+                            <img src="${providerPicture}" alt="${providerName}" class="w-16 h-16 rounded-full object-cover border-2 border-gray-200" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(providerName)}'">
                             <div class="flex-1">
-
-                                <p class="text-sm text-gray-500">
-                                    Service Provider
-                                </p>
-
-                                <h2 class="text-xl font-bold text-gray-900">
-                                    ${providerName}
-                                </h2>
-
-                                <p class="text-blue-600 text-sm break-all">
-                                    ${providerEmail}
-                                </p>
-
+                                <p class="text-sm text-gray-500">Service Provider</p>
+                                <h2 class="text-xl font-bold text-gray-900">${providerName}</h2>
+                                <p class="text-blue-600 text-sm break-all">${providerEmail}</p>
                             </div>
-
                         </div>
-
-                        <!-- TITLE -->
-                        <h3 class="text-2xl font-bold text-gray-900 mb-3">
-                            ${details.title || "Untitled Booking"}
-                        </h3>
-
-                        <!-- DESCRIPTION -->
-                        <p class="text-gray-600 leading-relaxed mb-5">
-                            ${details.description || "No description"}
-                        </p>
-
-                        <!-- DETAILS -->
+                        <h3 class="text-2xl font-bold text-gray-900 mb-3">${details.title || "Untitled Booking"}</h3>
+                        <p class="text-gray-600 leading-relaxed mb-5">${details.description || "No description"}</p>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                            <!-- LOCATION -->
                             <div class="bg-gray-50 rounded-xl p-4">
-
-                                <p class="text-sm text-gray-500 mb-1">
-                                    📍 Location
-                                </p>
-
-                                <p class="font-semibold text-gray-900">
-                                    ${details.location || "No location"}
-                                </p>
-
+                                <p class="text-sm text-gray-500 mb-1">📍 Location</p>
+                                <p class="font-semibold text-gray-900">${details.location || "No location"}</p>
                             </div>
-
-                            <!-- PRICE -->
                             <div class="bg-gray-50 rounded-xl p-4">
-
-                                <p class="text-sm text-gray-500 mb-1">
-                                    💰 Agreed Price
-                                </p>
-
-                                <p class="font-bold text-green-600 text-xl">
-                                    ₦${Number(
-                                        booking.total_price ||
-                                        details.price ||
-                                        details.budget ||
-                                        0
-                                    ).toLocaleString()}
-                                </p>
-
+                                <p class="text-sm text-gray-500 mb-1">💰 Agreed Price</p>
+                                <p class="font-bold text-green-600 text-xl">₦${Number(booking.total_price || details.price || details.budget || 0).toLocaleString()}</p>
                             </div>
-
-                            <!-- PROVIDER LOCATION -->
                             <div class="bg-gray-50 rounded-xl p-4">
-
-                                <p class="text-sm text-gray-500 mb-1">
-                                    🌍 Provider Location
-                                </p>
-
-                                <p class="font-semibold text-gray-900">
-                                    ${providerLocation}
-                                </p>
-
+                                <p class="text-sm text-gray-500 mb-1">🌍 Provider Location</p>
+                                <p class="font-semibold text-gray-900">${providerLocation}</p>
                             </div>
-
-                            <!-- BOOKING DATE -->
                             <div class="bg-gray-50 rounded-xl p-4">
-
-                                <p class="text-sm text-gray-500 mb-1">
-                                    📅 Booking Date
-                                </p>
-
-                                <p class="font-semibold text-gray-900">
-                                    ${new Date(
-                                        booking.created_at
-                                    ).toLocaleDateString()}
-                                </p>
-
+                                <p class="text-sm text-gray-500 mb-1">📅 Booking Date</p>
+                                <p class="font-semibold text-gray-900">${new Date(booking.created_at).toLocaleDateString()}</p>
                             </div>
-
                         </div>
-
                     </div>
-
-                    <!-- RIGHT -->
                     <div class="flex flex-col gap-3 w-full lg:w-56">
-
-                        <button
-                            class="review-btn bg-yellow-500 hover:bg-yellow-600 text-white px-5 py-3 rounded-xl font-semibold transition"
-                            data-booking="${booking.id}"
-                            data-service="${booking.service_id || ''}"
-                            data-provider="${booking.provider_id || ''}"
-                        >
-                            Leave Review
-                        </button>
-
+                        <button class="chat-provider-btn bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl font-semibold transition" data-provider="${booking.provider_id || ''}" data-service="${booking.service_id || ''}">💬 Chat Provider</button>
+                        <button class="review-btn bg-yellow-500 hover:bg-yellow-600 text-white px-5 py-3 rounded-xl font-semibold transition" data-booking="${booking.id}" data-service="${booking.service_id || ''}" data-provider="${booking.provider_id || ''}">Leave Review</button>
+                        ${completionAwaitingCustomer ? `
+                        <button class="confirm-completion-btn bg-green-600 hover:bg-green-700 text-white px-5 py-3 rounded-xl font-semibold transition" data-id="${booking.id}">✅ Confirm Completion</button>
+                        <button class="report-problem-btn bg-red-600 hover:bg-red-700 text-white px-5 py-3 rounded-xl font-semibold transition" data-id="${booking.id}">⚠️ Report Problem</button>
+                        ` : ''}
                     </div>
-
                 </div>
             `;
-
             container.appendChild(card);
         });
 
-        // ==========================
-        // REVIEW BUTTONS
-        // ==========================
-        document.querySelectorAll(".review-btn")
-        .forEach(button => {
+        setupBookingActions();
+    } catch (error) {
+        console.error("Load bookings error:", error);
+        container.innerHTML = `
+            <div class="bg-white rounded-xl p-10 text-center shadow">
+                <div class="text-6xl mb-4">❌</div>
+                <h2 class="text-2xl font-bold text-red-600 mb-3">Failed to load bookings</h2>
+                <p class="text-gray-500">${error.message}</p>
+            </div>
+        `;
+    }
+}
 
-            button.addEventListener("click", () => {
-
-                selectedBooking =
-                    button.dataset.booking;
-
-                openReviewModal(
-                    button.dataset.provider,
-                    button.dataset.service
-                );
-            });
+function setupBookingActions() {
+    document.querySelectorAll(".chat-provider-btn").forEach(button => {
+        button.addEventListener("click", async () => {
+            const providerId = button.dataset.provider;
+            const serviceId = button.dataset.service;
+            await startChat(providerId, serviceId);
         });
+    });
+
+    document.querySelectorAll(".review-btn").forEach(button => {
+        button.addEventListener("click", () => {
+            selectedBooking = button.dataset.booking;
+            openReviewModal(button.dataset.provider, button.dataset.service);
+        });
+    });
+
+    document.querySelectorAll(".confirm-completion-btn").forEach(button => {
+        button.addEventListener("click", async () => {
+            const bookingId = button.dataset.id;
+            if (!confirm("Are you sure you want to confirm completion? This will release payment to the provider.")) return;
+            const { error } = await supabase
+                .from("bookings")
+                .update({ status: "completed" })
+                .eq("id", bookingId);
+            if (error) {
+                alert("Failed to confirm completion: " + error.message);
+            } else {
+                alert("Thank you! Payment will be released to the provider.");
+                await loadBookings();
+            }
+        });
+    });
+
+    document.querySelectorAll(".report-problem-btn").forEach(button => {
+        button.addEventListener("click", async () => {
+            const bookingId = button.dataset.id;
+            const reason = prompt("Please describe the problem with this job:");
+            if (!reason) return;
+            const { error } = await supabase
+                .from("bookings")
+                .update({ status: "disputed", dispute_reason: reason })
+                .eq("id", bookingId);
+            if (error) {
+                alert("Failed to report problem: " + error.message);
+            } else {
+                alert("Your dispute has been submitted. Vora will review and contact you.");
+                await loadBookings();
+            }
+        });
+    });
+}
+
+// ==========================
+// START CHAT
+// ==========================
+async function startChat(providerId, serviceId) {
+
+    try {
+
+        // We don't have service_id/customer_id/provider_id in chats.
+        // Use `participants` + `sender_id` to locate the chat.
+        const { data: existingChat } = await supabase
+            .from("chats")
+            .select("id")
+            .eq("participants", providerId)
+            .eq("sender_id", currentUser.id)
+            .maybeSingle();
+
+        if (existingChat?.id) {
+            window.location.href = `chat.html?chat_id=${existingChat.id}`;
+            return;
+        }
+
+        // Create new chat
+        const { data: newChat, error } = await supabase
+            .from("chats")
+            .insert([
+                {
+                    participants: providerId,
+                    sender_id: currentUser.id
+                    // chat_id/last_message/last_timestamp will use defaults or nullable behavior
+                }
+            ])
+            .select("id")
+            .single();
+
+        if (error) throw error;
+
+        window.location.href = `chat.html?chat_id=${newChat.id}`;
 
     } catch (error) {
 
-        console.error(
-            "Load bookings error:",
-            error
-        );
-
-        container.innerHTML = `
-            <div class="bg-white rounded-xl p-10 text-center shadow">
-
-                <div class="text-6xl mb-4">
-                    ❌
-                </div>
-
-                <h2 class="text-2xl font-bold text-red-600 mb-3">
-                    Failed to load bookings
-                </h2>
-
-                <p class="text-gray-500">
-                    ${error.message}
-                </p>
-
-            </div>
-        `;
+        console.error("Chat Error:", error);
+        alert("Failed to start chat: " + error.message);
     }
 }
 

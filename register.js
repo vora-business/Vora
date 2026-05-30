@@ -342,13 +342,13 @@ if (registerForm) {
 
       if (profileError) throw profileError;
 
-      showSuccess("Account created successfully! Please check your email to confirm your account.");
+      showSuccess("Account created successfully! Redirecting...");
 
       if (registerForm) registerForm.reset();
       updateStrengthUI(0);
 
       setTimeout(() => {
-        window.location.href = "home.html";
+        window.location.href = "profile.html";
       }, 2000);
 
     } catch (error) {

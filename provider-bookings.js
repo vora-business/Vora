@@ -231,17 +231,38 @@ async function loadProviderBookings(providerId) {
             // ====================================
             // STATUS COLORS
             // ====================================
-            let statusColor =
-                "bg-yellow-100 text-yellow-700";
+            let statusColor = "bg-yellow-100 text-yellow-700";
 
-            if (status === "confirmed") {
-                statusColor =
-                    "bg-green-100 text-green-700";
+            if (status === "pending_payment") {
+                statusColor = "bg-yellow-100 text-yellow-700";
             }
 
-            if (status === "cancelled") {
-                statusColor =
-                    "bg-red-100 text-red-700";
+            if (status === "paid") {
+                statusColor = "bg-blue-100 text-blue-700";
+            }
+
+            if (status === "accepted") {
+                statusColor = "bg-green-100 text-green-700";
+            }
+
+            if (status === "in_progress") {
+                statusColor = "bg-indigo-100 text-indigo-700";
+            }
+
+            if (status === "completed_by_provider") {
+                statusColor = "bg-purple-100 text-purple-700";
+            }
+
+            if (status === "completed" || status === "paid_out") {
+                statusColor = "bg-emerald-100 text-emerald-700";
+            }
+
+            if (status === "disputed") {
+                statusColor = "bg-orange-100 text-orange-700";
+            }
+
+            if (status === "refunded" || status === "cancelled") {
+                statusColor = "bg-red-100 text-red-700";
             }
 
             // ====================================
@@ -350,29 +371,65 @@ async function loadProviderBookings(providerId) {
                         <!-- ACTIONS -->
                         <div class="mt-6 flex flex-wrap gap-3">
 
-                            ${
-                                status !== "confirmed"
-                                    ? `
-                                <button
-                                    class="confirm-booking-btn bg-green-600 text-white px-5 py-3 rounded-lg font-semibold hover:bg-green-700 transition"
-                                    data-id="${booking.id}">
-                                    Confirm Booking
-                                </button>
-                            `
-                                    : ""
-                            }
+                            <button
+                                class="chat-customer-btn bg-blue-600 text-white px-5 py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
+                                data-customer="${booking.user_id}"
+                                data-service="${booking.service_id}">
+                                💬 Chat Customer
+                            </button>
 
-                            ${
-                                status !== "cancelled"
-                                    ? `
+                            ${status === "paid" ? `
                                 <button
-                                    class="cancel-booking-btn bg-red-600 text-white px-5 py-3 rounded-lg font-semibold hover:bg-red-700 transition"
+                                    class="accept-booking-btn bg-green-600 text-white px-5 py-3 rounded-lg font-semibold hover:bg-green-700 transition"
                                     data-id="${booking.id}">
-                                    Cancel Booking
+                                    ✅ Accept Booking
                                 </button>
-                            `
-                                    : ""
-                            }
+                                <button
+                                    class="decline-booking-btn bg-red-600 text-white px-5 py-3 rounded-lg font-semibold hover:bg-red-700 transition"
+                                    data-id="${booking.id}">
+                                    ❌ Decline Booking
+                                </button>
+                            ` : ""}
+
+                            ${status === "accepted" ? `
+                                <button
+                                    class="start-work-btn bg-indigo-600 text-white px-5 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition"
+                                    data-id="${booking.id}">
+                                    ▶️ Start Work
+                                </button>
+                            ` : ""}
+
+                            ${status === "in_progress" ? `
+                                <button
+                                    class="mark-complete-btn bg-purple-600 text-white px-5 py-3 rounded-lg font-semibold hover:bg-purple-700 transition"
+                                    data-id="${booking.id}">
+                                    ✅ Mark Job Completed
+                                </button>
+                            ` : ""}
+
+                            ${status === "completed_by_provider" ? `
+                                <span class="px-4 py-3 rounded-lg bg-purple-50 text-purple-700 font-semibold">
+                                    Awaiting customer confirmation
+                                </span>
+                            ` : ""}
+
+                            ${status === "completed" ? `
+                                <span class="px-4 py-3 rounded-lg bg-emerald-50 text-emerald-700 font-semibold">
+                                    Completed — awaiting payout
+                                </span>
+                            ` : ""}
+
+                            ${status === "cancelled" ? `
+                                <span class="px-4 py-3 rounded-lg bg-red-50 text-red-700 font-semibold">
+                                    Cancelled
+                                </span>
+                            ` : ""}
+
+                            ${status === "disputed" ? `
+                                <span class="px-4 py-3 rounded-lg bg-orange-50 text-orange-700 font-semibold">
+                                    Disputed
+                                </span>
+                            ` : ""}
 
                         </div>
 
@@ -389,6 +446,11 @@ async function loadProviderBookings(providerId) {
         // ====================================
         setupBookingActions();
 
+        // ====================================
+        // CHAT BUTTONS
+        // ====================================
+        setupChatButtons();
+
     } catch (error) {
 
         console.error("Load Bookings Error:", error);
@@ -398,12 +460,75 @@ async function loadProviderBookings(providerId) {
 }
 
 // ===============================
+// CHAT BUTTONS
+// ===============================
+function setupChatButtons() {
+
+    document.querySelectorAll(".chat-customer-btn").forEach((btn) => {
+
+        btn.addEventListener("click", async () => {
+
+            const customerId = btn.dataset.customer;
+            const serviceId = btn.dataset.service;
+            const currentProviderId = (await supabase.auth.getSession()).data.session.user.id;
+
+            await startChat(customerId, currentProviderId, serviceId);
+        });
+    });
+}
+
+// ===============================
+// START CHAT
+// ===============================
+async function startChat(customerId, providerId, serviceId) {
+
+    try {
+
+        // We don't have service_id/customer_id/provider_id in chats.
+        // Use `participants` + `sender_id` to locate the chat.
+        const { data: existingChat } = await supabase
+            .from("chats")
+            .select("id")
+            .eq("participants", customerId)
+            .eq("sender_id", providerId)
+            .maybeSingle();
+
+        if (existingChat?.id) {
+            window.location.href = `chat.html?chat_id=${existingChat.id}`;
+            return;
+        }
+
+        // Create new chat
+        const { data: newChat, error } = await supabase
+            .from("chats")
+            .insert([
+                {
+                    participants: customerId,
+                    sender_id: providerId
+                    // chat_id/last_message/last_timestamp will use defaults or nullable behavior
+                }
+            ])
+            .select("id")
+            .single();
+
+        if (error) throw error;
+
+        window.location.href = `chat.html?chat_id=${newChat.id}`;
+
+    } catch (error) {
+
+        console.error("Chat Error:", error);
+        showError("Failed to start chat: " + error.message);
+    }
+}
+
+// ===============================
 // BOOKING ACTIONS
 // ===============================
 function setupBookingActions() {
 
-    // CONFIRM
-    document.querySelectorAll(".confirm-booking-btn")
+    // ACCEPT
+    document.querySelectorAll(".accept-booking-btn")
         .forEach((btn) => {
 
             btn.addEventListener("click", async () => {
@@ -412,13 +537,13 @@ function setupBookingActions() {
 
                 await updateBookingStatus(
                     bookingId,
-                    "confirmed"
+                    "accepted"
                 );
             });
         });
 
-    // CANCEL
-    document.querySelectorAll(".cancel-booking-btn")
+    // DECLINE
+    document.querySelectorAll(".decline-booking-btn")
         .forEach((btn) => {
 
             btn.addEventListener("click", async () => {
@@ -426,7 +551,7 @@ function setupBookingActions() {
                 const bookingId = btn.dataset.id;
 
                 const confirmed = confirm(
-                    "Are you sure you want to cancel this booking?"
+                    "Are you sure you want to decline this booking? This will cancel the booking."
                 );
 
                 if (!confirmed) return;
@@ -434,6 +559,42 @@ function setupBookingActions() {
                 await updateBookingStatus(
                     bookingId,
                     "cancelled"
+                );
+            });
+        });
+
+    // START WORK
+    document.querySelectorAll(".start-work-btn")
+        .forEach((btn) => {
+
+            btn.addEventListener("click", async () => {
+
+                const bookingId = btn.dataset.id;
+
+                await updateBookingStatus(
+                    bookingId,
+                    "in_progress"
+                );
+            });
+        });
+
+    // MARK COMPLETED
+    document.querySelectorAll(".mark-complete-btn")
+        .forEach((btn) => {
+
+            btn.addEventListener("click", async () => {
+
+                const bookingId = btn.dataset.id;
+
+                const confirmed = confirm(
+                    "Mark this job as completed? This will notify the customer."
+                );
+
+                if (!confirmed) return;
+
+                await updateBookingStatus(
+                    bookingId,
+                    "completed_by_provider"
                 );
             });
         });

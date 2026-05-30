@@ -1,8 +1,10 @@
 import { supabase } from './supabase.js';
+import { updateProfilePictureInHeader } from './auth.js';
 
 const container = document.getElementById('providerReviewsContainer');
 
 document.addEventListener('DOMContentLoaded', async () => {
+  await updateProfilePictureInHeader();
   await loadProviderReviews();
   setupLogout();
 });
@@ -97,9 +99,13 @@ async function loadProviderReviews() {
 
 function setupLogout() {
   const logoutBtn = document.getElementById('logoutBtn');
-  if (!logoutBtn) return;
-  logoutBtn.addEventListener('click', async () => {
+  const logoutBtnSide = document.getElementById('logoutBtnSideMenu');
+
+  async function doLogout() {
     await supabase.auth.signOut();
     window.location.href = 'login.html';
-  });
+  }
+
+  if (logoutBtn) logoutBtn.addEventListener('click', doLogout);
+  if (logoutBtnSide) logoutBtnSide.addEventListener('click', doLogout);
 }
