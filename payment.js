@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // PAYSTACK KEY
   // =========================
   const PAYSTACK_PUBLIC_KEY =
-    'pk_live_27b721ec9cd9be469fe24d0acd065dc8d6b9e67c';
+    'pk_test_296d47b57e4865b935a5f6b84241942c172e7a16';
 
   // =========================
   // ELEMENTS
