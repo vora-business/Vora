@@ -58,9 +58,16 @@ document.addEventListener('DOMContentLoaded', () => {
         addServiceForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
+            const submitBtn = document.getElementById('submit-btn');
+            const originalBtnText = submitBtn.innerText;
+            submitBtn.innerText = 'Adding...';
+            submitBtn.disabled = true;
+
             const { data: { user }, error: authError } = await supabase.auth.getUser();
             if (authError || !user) {
                 alert("You must be logged in to add a service.");
+                submitBtn.innerText = originalBtnText;
+                submitBtn.disabled = false;
                 LoadingSpinner.navigateTo('login.html');
                 return;
             }
@@ -68,12 +75,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const category = document.getElementById('service-category').value;
             if (!category) {
                 alert("Please select a category.");
+                submitBtn.innerText = originalBtnText;
+                submitBtn.disabled = false;
                 return;
             }
 
             const priceValue = document.getElementById('service-price').value.trim();
             if (!priceValue || isNaN(parseFloat(priceValue))) {
                 alert("Please enter a valid price.");
+                submitBtn.innerText = originalBtnText;
+                submitBtn.disabled = false;
                 return;
             }
 
@@ -119,6 +130,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch (error) {
                     console.error("Error uploading image:", error);
                     alert(`Error uploading image: ${error.message}`);
+                    submitBtn.innerText = originalBtnText;
+                    submitBtn.disabled = false;
                     return;
                 }
             }
@@ -155,6 +168,8 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) {
                 console.error("Error adding service: ", error);
                 alert(`Error adding service: ${error.message}`);
+                submitBtn.innerText = originalBtnText;
+                submitBtn.disabled = false;
             }
         });
     }

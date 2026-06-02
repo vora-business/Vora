@@ -7,10 +7,10 @@ class NotificationService {
       type,
       title,
       message,
-      metadata,
       sender_id: senderId,
       read: false,
       created_at: new Date().toISOString()
+      // Note: 'metadata' column doesn't exist in the notifications table
     });
   }
 
@@ -38,7 +38,7 @@ class NotificationService {
     try {
       const { error } = await supabase
         .from('notifications')
-        .update({ read: true, read_at: new Date().toISOString() })
+        .update({ read: true })
         .eq('id', notificationId);
 
       if (error) {
@@ -57,7 +57,7 @@ class NotificationService {
     try {
       const { error } = await supabase
         .from('notifications')
-        .update({ read: true, read_at: new Date().toISOString() })
+        .update({ read: true })
         .eq('user_id', userId);
 
       if (error) {

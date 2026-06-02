@@ -1,9 +1,12 @@
 import { supabase } from "./supabase.js";
+import { MessageRealtimeService } from "./message-realtime-service.js";
 
 const messagesContainer = document.getElementById("messagesContainer");
 const emptyState = document.getElementById("emptyState");
 
 let currentUser = null;
+let realtimeChannel = null;
+let loadConversationsTimeout = null;
 
 document.addEventListener("DOMContentLoaded", async () => {
   await initialize();
@@ -35,15 +38,17 @@ function setupLogout() {
   const logoutBtn = document.getElementById("logoutBtn");
   const logoutBtnSideMenu = document.getElementById("logoutBtnSideMenu");
   
-  logoutBtn?.addEventListener("click", async () => {
+  const handleLogout = async () => {
+    clearTimeout(loadConversationsTimeout);
+    if (realtimeChannel) {
+      supabase.removeChannel(realtimeChannel);
+    }
     await supabase.auth.signOut();
     window.location.href = "login.html";
-  });
-
-  logoutBtnSideMenu?.addEventListener("click", async () => {
-    await supabase.auth.signOut();
-    window.location.href = "login.html";
-  });
+  };
+  
+  logoutBtn?.addEventListener("click", handleLogout);
+  logoutBtnSideMenu?.addEventListener("click", handleLogout);
 }
 
 async function loadConversations() {
@@ -141,6 +146,8 @@ async function renderConversation(chat) {
 
     card.className =
       "bg-white rounded-xl shadow hover:shadow-lg transition cursor-pointer";
+    
+    card.id = `chat-card-${chat.id}`;
 
     const profilePicture = profile?.profile_picture && profile.profile_picture.trim() !== ""
       ? profile.profile_picture
@@ -199,22 +206,54 @@ async function renderConversation(chat) {
   }
 }
 
-function setupRealtime() {
+async function upsertConversationCard(chatId) {
+  console.log('📝 Upserting conversation card for:', chatId);
+  
+  try {
+    const { data: chat, error } = await supabase
+      .from("chats")
+      .select("*")
+      .or(`participants.eq.${currentUser.id},sender_id.eq.${currentUser.id}`)
+      .eq("id", chatId)
+      .maybeSingle();
+    
+    if (error || !chat) {
+      console.error('❌ Error fetching chat:', error);
+      return;
+    }
+    
+    // Remove the old card
+    const oldCard = document.getElementById(`chat-card-${chatId}`);
+    if (oldCard) {
+      oldCard.remove();
+      console.log('🗑️ Removed old card for:', chatId);
+    }
+    
+    // Re-render the card with updated data
+    await renderConversation(chat);
+    console.log('✅ Card updated for:', chatId);
+  } catch (error) {
+    console.error('❌ Error upserting conversation card:', error);
+  }
+}
 
-  supabase
-    .channel("messages-list")
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "messages"
-      },
-      async () => {
-        await loadConversations();
-      }
-    )
-    .subscribe();
+function setupRealtime() {
+  realtimeChannel = MessageRealtimeService.subscribeToMessagesList(
+    async (event, chatId) => {
+      // Optional batching to avoid thrashing
+      clearTimeout(loadConversationsTimeout);
+      loadConversationsTimeout = setTimeout(async () => {
+        if (chatId) {
+          console.log('🔄 Updating card for chat:', chatId);
+          await upsertConversationCard(chatId);
+        } else {
+          // Fallback (shouldn't happen)
+          console.log('🔄 Fallback: reloading all conversations');
+          await loadConversations();
+        }
+      }, 150);
+    }
+  );
 }
 
 function formatTime(dateString) {
@@ -246,3 +285,13 @@ function formatTime(dateString) {
 
   return date.toLocaleDateString();
 }
+
+// =========================
+// CLEANUP ON PAGE UNLOAD
+// =========================
+window.addEventListener("beforeunload", () => {
+  clearTimeout(loadConversationsTimeout);
+  if (realtimeChannel) {
+    supabase.removeChannel(realtimeChannel);
+  }
+});
