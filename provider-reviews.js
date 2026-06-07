@@ -108,4 +108,4 @@ function setupLogout() {
 
   if (logoutBtn) logoutBtn.addEventListener('click', doLogout);
   if (logoutBtnSide) logoutBtnSide.addEventListener('click', doLogout);
-}
+} 

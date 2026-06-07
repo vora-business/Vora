@@ -16,7 +16,7 @@ class SPA_Router {
       'my-requests': 'my-requests.html',
       'my-services': 'my-services.html',
       'add-service': 'add-service.html',
-      'edit-service': 'edit-service.html',
+      'edit-service': 'edit-service.html', 
       'service': 'service.html',
       'admin': 'admin.html',
       'admin-bookings': 'admin-bookings.html',

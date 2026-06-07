@@ -257,7 +257,7 @@ if (registerForm) {
   // ===============================
 
   function checkRegisterInputs() {
-    if (signupBtn) {
+    if (signupBtn) { 
       signupBtn.disabled =
         !fullnameInput?.value.trim() ||
         !emailInput?.value.trim() ||

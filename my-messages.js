@@ -189,7 +189,7 @@ async function renderConversation(chat) {
               ${unreadCount}
             </div>
           `
-            : ""
+            : "" 
         }
 
       </div>

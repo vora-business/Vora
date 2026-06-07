@@ -466,9 +466,6 @@ async function loadProviderBookings(providerId) {
                                     ⚠️ Reported
                                 </span>
                             ` : ""}
-                                    Disputed
-                                </span>
-                            ` : ""}
 
                         </div>
 

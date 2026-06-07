@@ -291,7 +291,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await supabase
           .from('payments')
           .insert([{
-            booking_id: booking.id,
+            booking_id: booking.id, 
             service_id: serviceId,
             provider_id: providerId,
             user_id: currentUser.id,

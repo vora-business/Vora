@@ -64,7 +64,7 @@ async function initPayoutSettings(form, bankInput, accountInput) {
                     bank_name: bankName,
                     account_number: accountNumber,
                     updated_at: new Date().toISOString() 
-                }, { onConflict: 'user_id' });
+                }, { onConflict: 'user_id' }); 
 
             if (error) throw error;
             alert("Your payout settings have been saved successfully!");

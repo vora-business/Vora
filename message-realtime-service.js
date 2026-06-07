@@ -129,7 +129,7 @@ export class MessageRealtimeService {
   static subscribeToMessagesList(callback) {
     console.log('🔌 Creating subscription for messages list');
     
-    const channel = supabase
+    const channel = supabase 
       .channel('messages-list-realtime')
       .on(
         'postgres_changes',

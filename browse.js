@@ -253,7 +253,7 @@ async function fetchReviews() {
 
         console.log(`Loaded ${reviewsData?.length || 0} reviews for ${serviceIds.length} services`);
 
-        reviewStatsMap = {};
+        reviewStatsMap = {}; 
         reviewsMap = {};
 
         reviewsData.forEach(review => {

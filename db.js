@@ -10,7 +10,7 @@ export async function getRequests() {
   console.log("Supabase deprecated - using Firebase")
   return []
 } 
- 
+  
 
 // Insert request - DEPRECATED
 export async function createRequest(request) {

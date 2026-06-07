@@ -405,7 +405,7 @@ document.addEventListener('click', async (e) => {
   const isPublicPage = fullyPublicPages.some(page => currentPage.includes(page));
 
   // Check if clicked element is a link to an info page
-  const clickedElement = e.target.closest('a');
+  const clickedElement = e.target.closest('a'); 
   if (clickedElement && clickedElement.href) {
     const href = clickedElement.href.toLowerCase();
     const infoPages = ['how-it-works.html', 'privacy-policy.html', 'terms-of-service.html'];

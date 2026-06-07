@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const removeImageBtn = document.getElementById('remove-image-btn');
 
     // Handle image preview
-    if (imageInput) {
+    if (imageInput) { 
         imageInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {

@@ -184,7 +184,7 @@ loginForm.addEventListener("submit", async (e) => {
   } catch (error) {
     console.error(error);
 
-    // Handle Errors
+    // Handle Errors 
     if (error.message.includes("Invalid login credentials")) {
       showError("Incorrect email or password");
     } else if (

@@ -388,7 +388,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // =========================
     const providerBtn = document.querySelector( 
         '[data-action="add-service.html"]'
-    );
+    ); 
 
     if (providerBtn) {
 

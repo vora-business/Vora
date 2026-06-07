@@ -11,7 +11,7 @@ let currentUser = null;
 document.addEventListener("DOMContentLoaded", async () => {
   const container = document.getElementById("myServicesContainer");
   await updateProfilePictureInHeader();
-
+ 
   // =========================
   // GET USER
   // =========================

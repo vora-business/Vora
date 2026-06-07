@@ -164,7 +164,7 @@ export class ChatService {
       delete this.channels[chatId];
     }
   }
-
+ 
   static unsubscribeAll() {
     Object.keys(this.channels).forEach((chatId) => this.unsubscribe(chatId));
   }

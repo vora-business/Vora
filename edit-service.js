@@ -134,7 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (updateErr) {
         console.error('Update error:', updateErr);
-        console.error('Error code:', updateErr.code);
+        console.error('Error code:', updateErr.code); 
         console.error('Error message:', updateErr.message);
         console.error('Payload sent:', payloadBase);
         console.error('Service ID:', serviceId);

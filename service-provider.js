@@ -196,4 +196,4 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.error('Error loading service provider details:', error);
     serviceProviderContainer.innerHTML = '<p>Error loading details. Please check your connection and try again.</p>';
   }
-});
+}); 

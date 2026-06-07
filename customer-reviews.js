@@ -437,7 +437,7 @@ function formatDate(dateString) {
         return "Unknown date";
     }
 
-    const date =
+    const date = 
         new Date(dateString);
 
     return date.toLocaleDateString(

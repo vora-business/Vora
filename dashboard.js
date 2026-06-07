@@ -274,4 +274,4 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadServices();
     await loadBookings();
 
-});
+}); 

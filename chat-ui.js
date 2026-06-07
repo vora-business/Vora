@@ -10,7 +10,7 @@ const otherUserNameEl = document.getElementById('other-user-name');
 const serviceTitleEl = document.getElementById('service-title');
 const backBtn = document.getElementById('backBtn');
 const logoutBtn = document.getElementById('logoutBtn');
-
+ 
 let currentUser = null;
 let chatId = null;
 let otherUserId = null;

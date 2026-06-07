@@ -13,7 +13,7 @@ export function toggleMenu() {
   };
 
   const closeMenuFn = () => {
-    sideMenu.classList.add('-translate-x-full');  
+    sideMenu.classList.add('-translate-x-full');   
     overlay?.classList.add('hidden');
   };
 

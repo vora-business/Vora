@@ -55,7 +55,7 @@ const preferredOrder = [
 
 // Fetch categories
 async function fetchCategories() {
-    try {
+    try { 
         console.log('Fetching categories...');
 
         const { data, error } = await supabase

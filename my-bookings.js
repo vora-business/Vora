@@ -462,7 +462,7 @@ function setupReviewModal() {
                     provider_id: providerId,
                     service_id: serviceId,
                     rating: selectedRating,
-                    comment
+                    comment 
                 });
 
             if (error) throw error;

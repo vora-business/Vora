@@ -288,6 +288,10 @@ function renderReviews(reviews, usersById) {
 // ============================
 
 function openBookingModal(service, providerId) {
+  // Store service globally so functions can access travel_price
+  window.currentService = service;
+  
+  const travelPrice = service.travel_price || 0;
   const modalHTML = `
     <div id="bookingModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl max-w-md w-full max-h-96 overflow-y-auto">
@@ -302,9 +306,9 @@ function openBookingModal(service, providerId) {
           <div>
             <label class="block text-sm font-semibold text-gray-900 mb-3">Number of People</label>
             <div class="flex items-center justify-between bg-gray-50 rounded-lg p-4">
-              <button type="button" onclick="updatePeople(-1, ${service.price})" class="bg-red-600 hover:bg-red-700 text-white w-10 h-10 rounded-lg font-bold text-lg" title="Remove person">−</button>
+              <button type="button" onclick="updatePeople(-1)" class="bg-red-600 hover:bg-red-700 text-white w-10 h-10 rounded-lg font-bold text-lg" title="Remove person">−</button>
               <span id="peopleCount" class="text-2xl font-bold">1</span>
-              <button type="button" onclick="updatePeople(1, ${service.price})" class="bg-green-600 hover:bg-green-700 text-white w-10 h-10 rounded-lg font-bold text-lg" title="Add person">+</button>
+              <button type="button" onclick="updatePeople(1)" class="bg-green-600 hover:bg-green-700 text-white w-10 h-10 rounded-lg font-bold text-lg" title="Add person">+</button>
             </div>
             <p class="text-xs text-gray-600 mt-2">Price per person: ₦${service.price}</p>
           </div>
@@ -334,11 +338,11 @@ function openBookingModal(service, providerId) {
             <label class="block text-sm font-semibold text-gray-900 mb-3">Service Location</label>
             <div class="space-y-3">
               <label class="flex items-center p-3 border-2 border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer">
-                <input type="radio" name="serviceLocation" value="provider" class="h-4 w-4" checked onchange="updateTravelFee(${service.price})">
+                <input type="radio" name="serviceLocation" value="provider" class="h-4 w-4" checked onchange="updateTravelFee()">
                 <span class="ml-3 text-gray-900 font-medium">I will come to the provider</span>
               </label>
               <label class="flex items-center p-3 border-2 border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer">
-                <input type="radio" name="serviceLocation" value="customer" class="h-4 w-4" onchange="updateTravelFee(${service.price})">
+                <input type="radio" name="serviceLocation" value="customer" class="h-4 w-4" onchange="updateTravelFee()">
                 <span class="ml-3 text-gray-900 font-medium">Provider should come to me</span>
               </label>
             </div>
@@ -351,7 +355,7 @@ function openBookingModal(service, providerId) {
             </div>
             
             <div id="travelFeeDiv" class="hidden mt-4 bg-orange-50 border border-orange-200 rounded-lg p-3">
-              <p class="text-sm text-orange-800"><strong>Travel Fee:</strong> <span id="travelFeeAmount">₦2,000</span></p>
+              <p class="text-sm text-orange-800"><strong>Travel Fee:</strong> <span id="travelFeeAmount">₦${travelPrice.toLocaleString()}</span></p>
             </div>
           </div>
 
@@ -383,14 +387,14 @@ function openBookingModal(service, providerId) {
   });
 }
 
-function updatePeople(change, pricePerPerson) {
+function updatePeople(change) {
   let count = parseInt(document.getElementById('peopleCount').textContent);
   count = Math.max(1, count + change);
   document.getElementById('peopleCount').textContent = count;
-  updateTotalPrice(pricePerPerson);
+  updateTotalPrice();
 }
 
-function updateTravelFee(pricePerPerson) {
+function updateTravelFee() {
   const location = document.querySelector('input[name="serviceLocation"]:checked').value;
   const travelFeeDiv = document.getElementById('travelFeeDiv');
   const customerLocationDiv = document.getElementById('customerLocationDiv');
@@ -403,15 +407,16 @@ function updateTravelFee(pricePerPerson) {
     customerLocationDiv.classList.add('hidden');
   }
   
-  updateTotalPrice(pricePerPerson);
+  updateTotalPrice();
 }
 
-function updateTotalPrice(pricePerPerson) {
+function updateTotalPrice() {
   const peopleCount = parseInt(document.getElementById('peopleCount').textContent);
   const location = document.querySelector('input[name="serviceLocation"]:checked').value;
-  const travelFee = location === 'customer' ? 2000 : 0;
+  const service = window.currentService;
+  const travelFee = location === 'customer' ? (service.travel_price || 0) : 0;
   
-  const total = (peopleCount * pricePerPerson) + travelFee;
+  const total = (peopleCount * service.price) + travelFee;
   document.getElementById('totalDisplay').textContent = `₦${total.toLocaleString()}`;
 }
 
@@ -422,7 +427,7 @@ function submitBooking(service, providerId) {
   const serviceLocation = document.querySelector('input[name="serviceLocation"]:checked').value;
   const specialInstructions = document.getElementById('specialInstructions').value;
   const customerLocation = document.getElementById('customerLocation').value;
-  const travelFee = serviceLocation === 'customer' ? 2000 : 0;
+  const travelFee = serviceLocation === 'customer' ? (service.travel_price || 0) : 0;
   const totalPrice = (peopleCount * service.price) + travelFee;
 
   if (!scheduleDate || !scheduleTime) {

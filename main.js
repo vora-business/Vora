@@ -41,7 +41,7 @@ async function loadRequests() {
 
     container.innerHTML = requests.length
       ? requests.map(req => `
-        <div class="card border p-3 mb-2 rounded">
+        <div class="card border p-3 mb-2 rounded"> 
           <h3>${req?.title ?? "Untitled Request"}</h3>
           <p>${req?.category ?? "Uncategorized"}</p>
           <span>Status: ${req?.status ?? "pending"}</span>
