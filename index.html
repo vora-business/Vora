@@ -10,6 +10,13 @@
 <link rel="apple-touch-icon" href="/favicon-192.png">
 </script>
 
+<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/favicon-512.png">
+<link rel="shortcut icon" href="/favicon.ico">
+<link rel="apple-touch-icon" href="/favicon-192.png">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#2563eb">
+
 <script src="https://cdn.tailwindcss.com"></script>
 
 <script type="application/ld+json">
@@ -117,6 +124,10 @@
 
   <!-- LINKS -->
   <div class="p-4 space-y-5">
+
+    <button id="installBtn" class="hidden px-4 py-2 text-blue-600 font-semibold">
+  Install Vora
+</button>
 
     <div id="mobileGuestActions" class="space-y-3">
       <a href="login.html"
@@ -321,6 +332,14 @@
   import { supabase } from './supabase.js'
 
   console.log(supabase)
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js');
+  });
+}
 </script>
 
 <!-- ================= TAWK ================= -->

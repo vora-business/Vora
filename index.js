@@ -1,6 +1,18 @@
 import { supabase } from './supabase.js';
 import { formatPrice } from './currency-utils.js';
 
+let deferredPrompt;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installBtn')?.classList.remove('hidden');
+});
+
+document.getElementById('installBtn')?.addEventListener('click', () => {
+  deferredPrompt?.prompt();
+});
+
 document.addEventListener('DOMContentLoaded', async () => {
 
   // =========================
