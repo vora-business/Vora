@@ -1,5 +1,5 @@
 import { LoadingSpinner } from './loading-utils.js';
-import { supabase, requireAuth } from './supabase.js';
+import { supabase } from './supabase.js';
 
 // Backwards-compat noop for any leftover Firebase-style callers
 if (typeof window !== 'undefined' && typeof window.onAuthStateChanged === 'undefined') {
@@ -117,62 +117,6 @@ function renderCategories(categories) {
 console.log('Home.js loaded...');
 fetchCategories().then((cats) => { console.log('Categories fetched:', cats); renderCategories(cats); });
 
-// ===============================
-// AUTH-GATED UI VISIBILITY
-// ===============================
-
-function applyAuthVisibility(user) {
-    // Elements only logged-in users should see
-    const loggedInOnly = [
-        document.getElementById('profileIcon'),
-        document.getElementById('logoutBtn'),
-        document.getElementById('logoutBtnSideMenu'),
-        document.getElementById('myBookingsLinkDesktop'),
-        document.getElementById('myMessagesLinkDesktop'),
-        document.getElementById('myBookingsLinkMobile'),
-        document.getElementById('myMessagesLinkMobile'),
-    ];
-
-    // Elements only guests should see
-    const loggedOutOnly = [
-        document.getElementById('loginLink'),
-        document.getElementById('loginLinkMobile'),
-    ];
-
-    loggedInOnly.forEach((el) => el && el.classList.toggle('hidden', !user));
-    loggedOutOnly.forEach((el) => el && el.classList.toggle('hidden', !!user));
-}
-
-async function updateProviderHubVisibility(user) {
-    const providerHubLinkNav = document.getElementById('providerHubLinkMobile');
-    const providerHubLinkPool = document.getElementById('providerHubLinkPool');
-    if (user) {
-        try {
-            const { data, error } = await supabase.from('services').select('id').eq('user_id', user.id).limit(1);
-            if (error) throw error;
-            const visible = data && data.length > 0;
-            if (providerHubLinkNav) providerHubLinkNav.classList.toggle('hidden', !visible);
-            if (providerHubLinkPool) providerHubLinkPool.classList.toggle('hidden', !visible);
-        } catch (err) {
-            console.error('Provider hub visibility check failed:', err);
-            if (providerHubLinkNav) providerHubLinkNav.classList.add('hidden');
-            if (providerHubLinkPool) providerHubLinkPool.classList.add('hidden');
-        }
-    } else {
-        if (providerHubLinkNav) providerHubLinkNav.classList.add('hidden');
-        if (providerHubLinkPool) providerHubLinkPool.classList.add('hidden');
-    }
-}
-
-// Run once immediately on load, so there's no flash of the wrong state
-// while we wait for the onAuthStateChange listener to fire.
-(async () => {
-    const { data } = await supabase.auth.getSession();
-    const user = data?.session?.user || null;
-    applyAuthVisibility(user);
-    await updateProviderHubVisibility(user);
-})();
-
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOMContentLoaded fired');
     const logoutBtn = document.getElementById('logoutBtn');
@@ -205,20 +149,25 @@ document.addEventListener('DOMContentLoaded', () => {
     if (logoutBtn) logoutBtn.addEventListener('click', logout);
     if (logoutBtnSideMenu) logoutBtnSideMenu.addEventListener('click', logout);
 
-    // "Become a Provider" requires login — guests get redirected to login.html
-    // with a redirect back to add-service.html after they sign in.
-    document.querySelectorAll('#becomeProviderLinkDesktop, #becomeProviderLinkMobile, #becomeProviderLinkCTA').forEach((link) => {
-        if (!link) return;
-        link.addEventListener('click', async (e) => {
-            e.preventDefault();
-            const user = await requireAuth(link.href);
-            if (user) window.location.href = link.href;
-        });
-    });
-
     supabase.auth.onAuthStateChange(async (event, session) => {
         const user = session?.user || null;
-        applyAuthVisibility(user);
-        await updateProviderHubVisibility(user);
+        const providerHubLinkNav = document.getElementById('providerHubLinkMobile');
+        const providerHubLinkPool = document.getElementById('providerHubLinkPool');
+        if (user) {
+            try {
+                const { data, error } = await supabase.from('services').select('id').eq('user_id', user.id).limit(1);
+                if (error) throw error;
+                const visible = data && data.length > 0;
+                if (providerHubLinkNav) providerHubLinkNav.classList.toggle('hidden', !visible);
+                if (providerHubLinkPool) providerHubLinkPool.classList.toggle('hidden', !visible);
+            } catch (err) {
+                console.error('Provider hub visibility check failed:', err);
+                if (providerHubLinkNav) providerHubLinkNav.classList.add('hidden');
+                if (providerHubLinkPool) providerHubLinkPool.classList.add('hidden');
+            }
+        } else {
+            if (providerHubLinkNav) providerHubLinkNav.classList.add('hidden');
+            if (providerHubLinkPool) providerHubLinkPool.classList.add('hidden');
+        }
     });
 });
