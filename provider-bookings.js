@@ -6,6 +6,258 @@ function normalizeProfile(profile) {
     return Array.isArray(profile) ? profile[0] : profile;
 }
 
+const MAPTILER_KEY = window.MAPTILER_API_KEY || '';
+const MAPTILER_STYLE_URL = MAPTILER_KEY
+    ? `https://api.maptiler.com/maps/streets/style.json?key=${MAPTILER_KEY}`
+    : '';
+
+function escapeHtml(text) {
+    if (!text) return '';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function formatRouteDistance(distanceMeters) {
+    return distanceMeters ? `${(distanceMeters / 1000).toFixed(1)} km` : 'Unknown distance';
+}
+
+function formatRouteDuration(durationSeconds) {
+    return durationSeconds ? `${Math.round(durationSeconds / 60)} min` : 'Unknown ETA';
+}
+
+let activeMapWatchers = new Map();
+
+async function watchUserLocation(mapContainer, callback) {
+    if (!navigator.geolocation) {
+        console.warn('Geolocation not available');
+        return null;
+    }
+
+    const watchId = navigator.geolocation.watchPosition(
+        (position) => {
+            const coords = [
+                Number(position.coords.longitude),
+                Number(position.coords.latitude)
+            ];
+            callback(coords);
+        },
+        (error) => {
+            console.error('Geolocation error:', error);
+        },
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+    );
+
+    activeMapWatchers.set(mapContainer, watchId);
+    return watchId;
+}
+
+function stopWatchingLocation(mapContainer) {
+    const watchId = activeMapWatchers.get(mapContainer);
+    if (watchId !== undefined) {
+        navigator.geolocation.clearWatch(watchId);
+        activeMapWatchers.delete(mapContainer);
+    }
+}
+
+async function geocodeAddress(address) {
+    if (!MAPTILER_KEY || !address) {
+        return null;
+    }
+
+    try {
+        const response = await fetch(
+            `https://api.maptiler.com/geocoding/${encodeURIComponent(address)}.json?key=${MAPTILER_KEY}&limit=1`
+        );
+        const data = await response.json();
+
+        if (!data?.features?.length) {
+            return null;
+        }
+
+        return data.features[0].geometry.coordinates;
+    } catch (error) {
+        console.error('MapTiler geocoding failed:', error);
+        return null;
+    }
+}
+
+async function getDirections(origin, destination) {
+    if (!MAPTILER_KEY || !origin || !destination) {
+        return null;
+    }
+
+    try {
+        const response = await fetch(
+            `https://api.maptiler.com/directions/driving/car.json?key=${MAPTILER_KEY}&start=${origin[0]},${origin[1]}&end=${destination[0]},${destination[1]}&geometries=geojson&overview=full`
+        );
+        const data = await response.json();
+
+        if (!data?.routes?.length) {
+            return null;
+        }
+
+        return data.routes[0];
+    } catch (error) {
+        console.error('MapTiler directions failed:', error);
+        return null;
+    }
+}
+
+function buildGoogleMapsUrl(origin, destination) {
+    if (!destination) return 'https://www.google.com/maps';
+
+    const originParam = Array.isArray(origin)
+        ? `${origin[1]},${origin[0]}`
+        : encodeURIComponent(origin || '');
+    const destinationParam = Array.isArray(destination)
+        ? `${destination[1]},${destination[0]}`
+        : encodeURIComponent(destination);
+
+    if (originParam && destinationParam) {
+        return `https://www.google.com/maps/dir/?api=1&origin=${originParam}&destination=${destinationParam}&travelmode=driving`;
+    }
+
+    return `https://www.google.com/maps/search/?api=1&query=${destinationParam}`;
+}
+
+function removeRouteModal() {
+    const existing = document.getElementById('customerRouteModal');
+    if (existing) existing.remove();
+}
+
+function renderRouteSummary(distanceMeters, durationSeconds) {
+    const existing = document.getElementById('routeSummary');
+    if (existing) existing.remove();
+
+    const mapElement = document.getElementById('customerRouteMap');
+    if (!mapElement) return;
+
+    const summary = document.createElement('div');
+    summary.id = 'routeSummary';
+    summary.className = 'absolute top-4 left-4 right-4 bg-white/95 border border-gray-200 rounded-3xl p-4 shadow-lg backdrop-blur-sm text-sm text-gray-800';
+    summary.innerHTML = `
+        <div class="flex items-center justify-between gap-4">
+          <div>
+            <p class="font-semibold text-gray-900">Route to customer</p>
+            <p class="text-xs text-gray-600">${formatRouteDistance(distanceMeters)} · ${formatRouteDuration(durationSeconds)}</p>
+          </div>
+          <div class="inline-flex items-center rounded-full bg-blue-600 text-white px-3 py-1 text-xs font-semibold">Live route</div>
+        </div>
+    `;
+    mapElement.appendChild(summary);
+}
+
+async function renderCustomerRouteMap(customerLocation, providerLocation) {
+    const mapElement = document.getElementById('customerRouteMap');
+    if (!mapElement) return;
+
+    if (!MAPTILER_KEY) {
+        mapElement.innerHTML = '<div class="h-full flex items-center justify-center text-gray-600">MapTiler API key not set.</div>';
+        return;
+    }
+
+    mapElement.innerHTML = '<div class="h-full flex items-center justify-center text-gray-600">Loading map...</div>';
+
+    const destination = await geocodeAddress(customerLocation);
+    if (!destination) {
+        mapElement.innerHTML = '<div class="h-full flex items-center justify-center text-red-600">Unable to locate customer address.</div>';
+        return;
+    }
+
+    mapElement.innerHTML = '';
+
+    try {
+        let userMarker = null;
+        let userLocation = null;
+
+        const map = new maplibregl.Map({
+            container: mapElement,
+            style: MAPTILER_STYLE_URL,
+            center: destination,
+            zoom: 14,
+        });
+
+        map.on('load', () => {
+            new maplibregl.Marker({ color: '#10b981' })
+                .setLngLat(destination)
+                .setPopup(new maplibregl.Popup({ offset: 25 }).setText('Customer location'))
+                .addTo(map);
+
+            watchUserLocation(mapElement, (coords) => {
+                userLocation = coords;
+                
+                if (!userMarker) {
+                    userMarker = new maplibregl.Marker({ color: '#ef4444', scale: 1.2 })
+                        .setLngLat(coords)
+                        .setPopup(new maplibregl.Popup({ offset: 25 }).setText('Your current location'))
+                        .addTo(map);
+                } else {
+                    userMarker.setLngLat(coords);
+                }
+
+                const bounds = new maplibregl.LngLatBounds(destination, coords);
+                map.fitBounds(bounds, { padding: 80 });
+            });
+
+            const navBtn = document.getElementById('googleMapsNavBtn');
+            if (navBtn) {
+                navBtn.href = buildGoogleMapsUrl(userLocation || providerLocation, destination);
+                navBtn.classList.remove('opacity-50', 'pointer-events-none');
+            }
+        });
+    } catch (error) {
+        console.error('Map initialization failed:', error);
+        mapElement.innerHTML = '<div class="h-full flex items-center justify-center text-red-600">Failed to initialize the map.</div>';
+    }
+}
+
+async function openLocateCustomerModal(customerLocation, providerLocation) {
+    removeRouteModal();
+
+    const modal = document.createElement('div');
+    modal.id = 'customerRouteModal';
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+    modal.innerHTML = `
+        <div class="bg-white rounded-3xl overflow-hidden shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between p-4 border-b">
+                <div>
+                    <h2 class="text-xl font-bold">Locate Customer</h2>
+                    <p class="text-sm text-gray-500">Route from your position to the customer address.</p>
+                </div>
+                <button id="closeRouteModal" class="text-3xl leading-none text-gray-600">&times;</button>
+            </div>
+            <div id="customerRouteMap" class="h-[60vh] relative"></div>
+            <div class="p-4 flex justify-between gap-3 bg-gray-50">
+                <a id="googleMapsNavBtn" target="_blank" rel="noopener noreferrer" class="opacity-50 pointer-events-none bg-green-600 text-white px-5 py-3 rounded-lg font-semibold hover:bg-green-700 transition">
+                    Open in Google Maps
+                </a>
+                <button id="closeRouteModalAction" class="px-4 py-2 rounded-lg bg-slate-600 text-white hover:bg-slate-700">Close</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    document.getElementById('closeRouteModal').addEventListener('click', removeRouteModal);
+    document.getElementById('closeRouteModalAction').addEventListener('click', removeRouteModal);
+
+    await renderCustomerRouteMap(customerLocation, providerLocation);
+}
+
+function setupLocateButtons() {
+    document.querySelectorAll('.locate-customer-btn').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+            const customerLocation = btn.dataset.customerLocation;
+            const providerLocation = btn.dataset.serviceLocation;
+            await openLocateCustomerModal(customerLocation, providerLocation);
+        });
+    });
+}
+
 // ===============================
 // ELEMENTS
 // ===============================
@@ -421,6 +673,16 @@ async function loadProviderBookings(providerId) {
                                 💬 Chat Customer
                             </button>
 
+                            ${booking.customer_location ? `
+                                <button
+                                    class="locate-customer-btn bg-slate-600 text-white px-5 py-3 rounded-lg font-semibold hover:bg-slate-700 transition"
+                                    data-booking-id="${booking.id}"
+                                    data-customer-location="${escapeHtml(booking.customer_location)}"
+                                    data-service-location="${escapeHtml(service?.location || '')}">
+                                    📍 Locate Customer
+                                </button>
+                            ` : ''}
+
                             ${status === "paid" ? `
                                 <button
                                     class="accept-booking-btn bg-green-600 text-white px-5 py-3 rounded-lg font-semibold hover:bg-green-700 transition"
@@ -503,6 +765,11 @@ async function loadProviderBookings(providerId) {
         // CHAT BUTTONS
         // ====================================
         setupChatButtons();
+
+        // ====================================
+        // LOCATE CUSTOMER BUTTONS
+        // ====================================
+        setupLocateButtons();
 
     } catch (error) {
 

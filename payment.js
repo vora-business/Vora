@@ -57,21 +57,41 @@ document.addEventListener('DOMContentLoaded', async () => {
   const offerId = params.get('offerId');
   const providerId = params.get('providerId');
 
+  const bookingIdParam = params.get('bookingId') || '';
+
+  let existingBooking = null;
+
+  if (bookingIdParam) {
+    const { data: bookingData, error: bookingLookupError } =
+      await supabase
+        .from('bookings')
+        .select('*')
+        .eq('id', bookingIdParam)
+        .maybeSingle();
+
+    if (bookingLookupError) {
+      console.error('Error loading pending booking:', bookingLookupError);
+    } else {
+      existingBooking = bookingData;
+    }
+  }
+
   const scheduledDate =
     params.get('scheduledDate') ||
+    existingBooking?.scheduled_date ||
     new Date().toISOString();
 
   let totalPrice =
-    Number(params.get('totalPrice')) || 0;
+    Number(params.get('totalPrice') || existingBooking?.total_price || 0) || 0;
 
   // NEW BOOKING FIELDS
-  const numberOfPeople = parseInt(params.get('numberOfPeople')) || 1;
-  const serviceLocation = params.get('serviceLocation') || 'provider';
-  const customerLocation = params.get('customerLocation') || '';
-  const travelFee = parseInt(params.get('travelFee')) || 0;
-  const specialInstructions = params.get('specialInstructions') || '';
-  const paramPricePerPerson = Number(params.get('pricePerPerson')) || 0;
-  const paramDiscountedTotal = Number(params.get('discountedTotal')) || 0;
+  const numberOfPeople = parseInt(params.get('numberOfPeople') || existingBooking?.number_of_people || '1') || 1;
+  const serviceLocation = params.get('serviceLocation') || existingBooking?.service_location || 'provider';
+  const customerLocation = params.get('customerLocation') || existingBooking?.customer_location || '';
+  const travelFee = parseInt(params.get('travelFee') || existingBooking?.travel_fee || '0') || 0;
+  const specialInstructions = params.get('specialInstructions') || existingBooking?.special_instructions || '';
+  const paramPricePerPerson = Number(params.get('pricePerPerson') || existingBooking?.price_per_person || 0);
+  const paramDiscountedTotal = Number(params.get('discountedTotal') || existingBooking?.total_price || 0);
 
   let bookingPrice = {
     perPerson: paramPricePerPerson || (numberOfPeople > 0 ? Math.round((totalPrice - travelFee) / numberOfPeople) : 0),
@@ -343,32 +363,55 @@ document.addEventListener('DOMContentLoaded', async () => {
       const totalToCharge = bookingPriceForPayload.total;
       const perPersonToCharge = bookingPriceForPayload.perPerson;
 
-      const bookingPayload = {
-        provider_id: providerId,
-        user_id: currentUser.id,
-        scheduled_date: scheduledDate,
-        total_price: totalToCharge,
-        status: 'pending_payment',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        number_of_people: numberOfPeople,
-        price_per_person: perPersonToCharge,
-        service_location: serviceLocation,
-        customer_location: customerLocation,
-        travel_fee: travelFee,
-        special_instructions: specialInstructions,
-        ...(serviceId ? { service_id: serviceId } : {}),
-        ...(requestId ? { request_id: requestId } : {})
-      };
+      let booking = existingBooking;
 
-      const { data: booking, error: bookingError } =
-        await supabase
+      if (!booking) {
+        const bookingPayload = {
+          provider_id: providerId,
+          user_id: currentUser.id,
+          scheduled_date: scheduledDate,
+          total_price: totalToCharge,
+          status: 'pending_payment',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          number_of_people: numberOfPeople,
+          price_per_person: perPersonToCharge,
+          service_location: serviceLocation,
+          customer_location: customerLocation,
+          travel_fee: travelFee,
+          special_instructions: specialInstructions,
+          ...(serviceId ? { service_id: serviceId } : {}),
+          ...(requestId ? { request_id: requestId } : {})
+        };
+
+        const { data: newBooking, error: bookingError } =
+          await supabase
+            .from('bookings')
+            .insert([bookingPayload])
+            .select()
+            .single();
+
+        if (bookingError) throw bookingError;
+        booking = newBooking;
+      } else {
+        const { error: bookingUpdateError } = await supabase
           .from('bookings')
-          .insert([bookingPayload])
-          .select()
-          .single();
+          .update({
+            status: 'pending_payment',
+            total_price: totalToCharge,
+            price_per_person: perPersonToCharge,
+            scheduled_date: scheduledDate,
+            number_of_people: numberOfPeople,
+            service_location: serviceLocation,
+            customer_location: customerLocation,
+            travel_fee: travelFee,
+            special_instructions: specialInstructions,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', booking.id);
 
-      if (bookingError) throw bookingError;
+        if (bookingUpdateError) throw bookingUpdateError;
+      }
 
 
       // =========================

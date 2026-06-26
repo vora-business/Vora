@@ -1,8 +1,136 @@
 import { supabase } from "./supabase.js";
 
+const MAPTILER_KEY = window.MAPTILER_API_KEY || '';
+const MAPTILER_STYLE_URL = MAPTILER_KEY
+    ? `https://api.maptiler.com/maps/streets/style.json?key=${MAPTILER_KEY}`
+    : '';
+
+function buildGoogleMapsUrl(origin, destination) {
+    if (!destination) return 'https://www.google.com/maps';
+
+    const originParam = Array.isArray(origin)
+        ? `${origin[1]},${origin[0]}`
+        : encodeURIComponent(origin || '');
+    const destinationParam = Array.isArray(destination)
+        ? `${destination[1]},${destination[0]}`
+        : encodeURIComponent(destination);
+
+    if (originParam && destinationParam) {
+        return `https://www.google.com/maps/dir/?api=1&origin=${originParam}&destination=${destinationParam}&travelmode=driving`;
+    }
+
+    return `https://www.google.com/maps/search/?api=1&query=${destinationParam}`;
+}
+
 let currentUser = null;
 let selectedRating = 0;
 let selectedBooking = null;
+let locationWatchers = new Map();
+
+async function watchUserLocation(mapContainer, callback) {
+    if (!navigator.geolocation) {
+        console.warn('Geolocation not available');
+        return null;
+    }
+
+    const watchId = navigator.geolocation.watchPosition(
+        (position) => {
+            const coords = [
+                Number(position.coords.longitude),
+                Number(position.coords.latitude)
+            ];
+            callback(coords);
+        },
+        (error) => {
+            console.error('Geolocation error:', error);
+        },
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+    );
+
+    locationWatchers.set(mapContainer, watchId);
+    return watchId;
+}
+
+function stopWatchingLocation(mapContainer) {
+    const watchId = locationWatchers.get(mapContainer);
+    if (watchId !== undefined) {
+        navigator.geolocation.clearWatch(watchId);
+        locationWatchers.delete(mapContainer);
+    }
+}
+
+async function geocodeAddress(address) {
+    if (!MAPTILER_KEY || !address) return null;
+
+    try {
+        const response = await fetch(`https://api.maptiler.com/geocoding/${encodeURIComponent(address)}.json?key=${MAPTILER_KEY}&limit=1`);
+        const data = await response.json();
+        if (!data?.features?.length) return null;
+        return data.features[0].geometry.coordinates;
+    } catch (error) {
+        console.error('MapTiler geocoding failed:', error);
+        return null;
+    }
+}
+
+async function renderBookingMap(container, location) {
+    if (!container || !location) {
+        container.innerHTML = '<div class="h-40 flex items-center justify-center text-sm text-gray-500">Location unavailable</div>';
+        return;
+    }
+
+    if (!MAPTILER_KEY) {
+        container.innerHTML = '<div class="h-40 flex items-center justify-center text-sm text-gray-500">Map unavailable</div>';
+        return;
+    }
+
+    container.innerHTML = '<div class="h-40 flex items-center justify-center text-sm text-gray-500">Loading map...</div>';
+
+    const destination = await geocodeAddress(location);
+    if (!destination) {
+        container.innerHTML = '<div class="h-40 flex items-center justify-center text-sm text-red-600">Unable to locate this address</div>';
+        return;
+    }
+
+    try {
+        let userMarker = null;
+        let userLocation = null;
+
+        const map = new maplibregl.Map({
+            container,
+            style: MAPTILER_STYLE_URL,
+            center: destination,
+            zoom: 14,
+            attributionControl: false
+        });
+
+        map.on('load', () => {
+            new maplibregl.Marker({ color: '#2563eb' })
+                .setLngLat(destination)
+                .setPopup(new maplibregl.Popup({ offset: 25 }).setText(location))
+                .addTo(map);
+
+            watchUserLocation(container, (coords) => {
+                userLocation = coords;
+                
+                if (!userMarker) {
+                    userMarker = new maplibregl.Marker({ color: '#ef4444', scale: 1.2 })
+                        .setLngLat(coords)
+                        .setPopup(new maplibregl.Popup({ offset: 25 }).setText('Your location'))
+                        .addTo(map);
+                } else {
+                    userMarker.setLngLat(coords);
+                }
+
+                const bounds = new maplibregl.LngLatBounds(destination, coords);
+                map.fitBounds(bounds, { padding: 80 });
+            });
+        });
+    } catch (error) {
+        console.error('Failed to initialize booking map:', error);
+        container.innerHTML = '<div class="h-40 flex items-center justify-center text-sm text-red-600">Map failed to load</div>';
+    }
+}
 
 // ==========================
 // INIT
@@ -151,7 +279,7 @@ async function loadBookings() {
             const provider = providersById[String(booking.provider_id)] || null;
             const providerName = provider?.full_name || "Unknown Provider";
             const providerEmail = provider?.email || "No Email";
-            const providerLocation = provider?.location || "Location not available";
+            const providerLocation = provider?.location || details?.location || booking?.service_location || "Location not available";
             const providerPicture = provider?.profile_picture && provider.profile_picture.trim() !== "" ? provider.profile_picture : `https://ui-avatars.com/api/?name=${encodeURIComponent(providerName)}&background=random`;
             const completionAwaitingCustomer = ["completed_by_provider", "awaiting_customer_confirmation"].includes(booking.status);
             const servicePrice = Number(details.price || 0);
@@ -250,10 +378,21 @@ async function loadBookings() {
                                 <p class="font-semibold text-gray-900">${new Date(booking.created_at).toLocaleDateString()}</p>
                             </div>
                         </div>
+
+                        <div class="mt-5 rounded-2xl border border-gray-200 overflow-hidden">
+                            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                                <p class="text-sm font-semibold text-gray-900">Provider Location Map</p>
+                            </div>
+                            <div class="h-48" id="booking-map-${booking.id}"></div>
+                        </div>
                     </div>
                     <div class="flex flex-col gap-3 w-full lg:w-56">
+                        <a class="locate-provider-btn bg-gray-100 hover:bg-gray-200 text-gray-800 px-5 py-3 rounded-xl font-semibold transition text-center" href="${buildGoogleMapsUrl(null, providerLocation)}" target="_blank">🧭 Track Provider</a>
                         <button class="chat-provider-btn bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl font-semibold transition" data-provider="${booking.provider_id || ''}" data-service="${booking.service_id || ''}">💬 Chat Provider</button>
                         <button class="review-btn bg-yellow-500 hover:bg-yellow-600 text-white px-5 py-3 rounded-xl font-semibold transition" data-booking="${booking.id}" data-service="${booking.service_id || ''}" data-provider="${booking.provider_id || ''}">Leave Review</button>
+                        ${booking.status === "pending_payment" ? `
+                        <button class="complete-payment-btn bg-amber-500 hover:bg-amber-600 text-white px-5 py-3 rounded-xl font-semibold transition" data-id="${booking.id}" data-amount="${bookingTotal}">💳 Complete Payment</button>
+                        ` : ''}
                         ${completionAwaitingCustomer ? `
                         <button class="confirm-completion-btn bg-green-600 hover:bg-green-700 text-white px-5 py-3 rounded-xl font-semibold transition" data-id="${booking.id}">✅ Confirm Completion</button>
                         <button class="report-problem-btn bg-red-600 hover:bg-red-700 text-white px-5 py-3 rounded-xl font-semibold transition" data-id="${booking.id}">⚠️ Report Problem</button>
@@ -265,6 +404,14 @@ async function loadBookings() {
         });
 
         setupBookingActions();
+
+        document.querySelectorAll('[id^="booking-map-"]').forEach((mapNode) => {
+            const bookingId = mapNode.id.replace('booking-map-', '');
+            const booking = bookings.find((item) => String(item.id) === String(bookingId));
+            const provider = providersById[String(booking?.provider_id)] || null;
+            const providerLocation = provider?.location || 'Location not available';
+            renderBookingMap(mapNode, providerLocation);
+        });
     } catch (error) {
         console.error("Load bookings error:", error);
         container.innerHTML = `
@@ -324,6 +471,28 @@ function setupBookingActions() {
             } else {
                 alert("Your dispute has been submitted. Vora will review and contact you.");
                 await loadBookings();
+            }
+        });
+    });
+
+    // Complete pending payment
+    document.querySelectorAll(".complete-payment-btn").forEach(button => {
+        button.addEventListener("click", async () => {
+            const bookingId = button.dataset.id;
+            const amount = Number(button.dataset.amount || 0);
+            if (!confirm(`Proceed to complete payment of ₦${amount.toLocaleString()} for this booking?`)) return;
+
+            try {
+                const bookingCard = button.closest("div.bg-white.rounded-2xl.shadow-md.p-6");
+                const bookingTitle = bookingCard?.querySelector("h3")?.textContent || "this booking";
+                const params = new URLSearchParams();
+                params.append("bookingId", bookingId);
+                params.append("amount", String(amount));
+                params.append("title", bookingTitle);
+                window.location.href = `payment.html?${params.toString()}`;
+            } catch (err) {
+                console.error("Payment redirect failed:", err);
+                alert("Failed to open payment page: " + (err.message || err));
             }
         });
     });

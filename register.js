@@ -220,6 +220,7 @@ if (registerForm) {
   const fullnameInput = document.getElementById("fullname");
   const emailInput = document.getElementById("email");
   const phoneInput = document.getElementById("phone");
+  const countryCodeSelect = document.getElementById("countryCode");
   const locationInput = document.getElementById("location");
   const passwordInput = document.getElementById("password");
   const confirmPasswordInput = document.getElementById("confirmPassword");
@@ -263,6 +264,7 @@ if (registerForm) {
       signupBtn.disabled =
         !fullnameInput?.value.trim() ||
         !emailInput?.value.trim() ||
+        !countryCodeSelect?.value.trim() ||
         !phoneInput?.value.trim() ||
         !locationInput?.value.trim() ||
         !passwordInput?.value.trim() ||
@@ -289,10 +291,13 @@ if (registerForm) {
 
     const fullname = fullnameInput?.value.trim() || "";
     const email = emailInput?.value.trim() || "";
+    const countryCode = countryCodeSelect?.value.trim() || "";
     const phone = phoneInput?.value.trim() || "";
     const location = locationInput?.value.trim() || "";
     const password = passwordInput?.value.trim() || "";
     const confirmPassword = confirmPasswordInput?.value.trim() || "";
+    const sanitizedPhone = phone.replace(/\s+/g, "");
+    const fullPhone = countryCode ? `${countryCode}${sanitizedPhone}` : sanitizedPhone;
 
     if (fullname.length < 2) {
       showError("Full name is too short.");
@@ -304,8 +309,8 @@ if (registerForm) {
       return;
     }
 
-    if (!phone || phone.length < 5) {
-      showError("Please enter a valid phone number.");
+    if (!countryCode || !sanitizedPhone || sanitizedPhone.length < 5) {
+      showError("Please select your country code and enter a valid phone number.");
       return;
     }
 
@@ -354,7 +359,7 @@ if (registerForm) {
           uid: authData.user.id,
           full_name: fullname,
           email: email,
-          phone: phone,
+          phone: fullPhone,
           location: location,
           role: 'user',
           verified: false
@@ -369,7 +374,7 @@ if (registerForm) {
           id: authData.user.id,
           email: email,
           full_name: fullname,
-          phone: phone,
+          phone: fullPhone,
           location: location,
           profile_picture: null
         }]);

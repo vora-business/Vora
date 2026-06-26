@@ -12,7 +12,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const nameInput = document.getElementById("name");
   const emailInput = document.getElementById("email");
-  const phoneInput = document.getElementById("phone");
+  const countryCodeInput = document.getElementById("countryCode");
+  const phoneLocalInput = document.getElementById("phoneLocal");
   const locationInput = document.getElementById("location");
 
   const profilePictureArea = document.getElementById("profilePictureArea");
@@ -147,6 +148,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!confirmDelete) return;
 
     try {
+      const localPhone = phoneLocalInput.value.trim().replace(/\s+/g, "");
+      const fullPhone = `${countryCodeInput.value.trim() || "+234"}${localPhone}`;
+
       // UPDATE DATABASE via RPC
       const { error } = await supabase.rpc("upsert_profile", {
         p_id: currentUser.id,
@@ -154,7 +158,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         p_full_name: nameInput.value.trim() || null,
         p_role: "user",
         p_location: locationInput.value.trim() || null,
-        p_phone: phoneInput.value.trim() || null,
+        p_phone: fullPhone || null,
         p_profile_picture: null,
       });
 
@@ -184,13 +188,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     e.preventDefault();
 
     try {
+      const localPhone = phoneLocalInput.value.trim().replace(/\s+/g, "");
+      const fullPhone = `${countryCodeInput.value.trim() || "+234"}${localPhone}`;
+
       const { error } = await supabase.rpc("upsert_profile", {
         p_id: currentUser.id,
-        p_email: currentUser.email, // keep consistent
+        p_email: currentUser.email,
         p_full_name: nameInput.value.trim(),
         p_role: "user",
         p_location: locationInput.value.trim(),
-        p_phone: phoneInput.value.trim(),
+        p_phone: fullPhone,
         p_profile_picture: currentProfilePicture,
       });
 
@@ -201,7 +208,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         .from("users")
         .update({
           full_name: nameInput.value.trim(),
-          phone: phoneInput.value.trim(),
+          phone: fullPhone,
           location: locationInput.value.trim(),
           profile_picture: currentProfilePicture,
         })
@@ -277,8 +284,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       // 3) Fill the form from profiles
       nameInput.value = dataToUse.full_name || "";
-      phoneInput.value = dataToUse.phone || "";
       locationInput.value = dataToUse.location || "";
+
+      const storedPhone = (dataToUse.phone || "").trim();
+      const phoneMatch = storedPhone.match(/^(\+\d{1,4})(\d+)$/);
+      if (phoneMatch) {
+        countryCodeInput.value = phoneMatch[1];
+        phoneLocalInput.value = phoneMatch[2];
+      } else {
+        countryCodeInput.value = "+234";
+        phoneLocalInput.value = storedPhone;
+      }
 
       // Profile image UI
       if (dataToUse.profile_picture) {

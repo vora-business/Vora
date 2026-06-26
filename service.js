@@ -17,6 +17,11 @@ const serviceContainer = document.getElementById("service-container");
 const reviewsContainer = document.getElementById("reviews-container");
 const serviceReviewsWrapper = document.getElementById("service-reviews");
 
+const MAPTILER_KEY = window.MAPTILER_API_KEY || '';
+const MAPTILER_STYLE_URL = MAPTILER_KEY
+  ? `https://api.maptiler.com/maps/streets/style.json?key=${MAPTILER_KEY}`
+  : '';
+
 // ============================
 // AUTH CHECK
 // ============================
@@ -75,7 +80,7 @@ async function loadService() {
     // FETCH SERVICE PROVIDER'S PROFILE
     const { data: providerProfile, error: providerError } = await supabase
       .from('users')
-      .select('full_name, email, profile_picture')
+      .select('full_name, email, profile_picture, location')
       .eq('id', providerId)
       .single();
 
@@ -203,10 +208,11 @@ async function loadService() {
         </div>
 
         <div>
-          <p class="text-sm text-gray-500">Location</p>
+          <p class="text-sm text-gray-500">Provider Location</p>
           <p class="text-gray-700">
-            ${service.location || 'Not specified'}
+            ${providerProfile?.location || service.location || 'Not specified'}
           </p>
+          <div id="serviceMap" class="h-96 w-full rounded-xl overflow-hidden mt-6 border border-gray-200"></div>
         </div>
 
         <div class="fixed bottom-0 left-0 w-full bg-white border-t p-4">
@@ -228,6 +234,7 @@ async function loadService() {
 
     renderReviewSummary(reviews || []);
     renderReviews(reviews || [], usersById);
+    await renderServiceMap(service, providerProfile);
 
   } catch (err) {
     console.error(err);
@@ -323,6 +330,210 @@ function renderReviews(reviews, usersById) {
 
     reviewsContainer.appendChild(card);
   });
+}
+
+async function geocodeServiceLocation(location) {
+  if (!MAPTILER_KEY) {
+    return null;
+  }
+
+  try {
+    const response = await fetch(
+      `https://api.maptiler.com/geocoding/${encodeURIComponent(location)}.json?key=${MAPTILER_KEY}&limit=1`
+    );
+    const data = await response.json();
+
+    if (!data?.features?.length) {
+      return null;
+    }
+
+    return data.features[0].geometry.coordinates;
+  } catch (error) {
+    console.error('MapTiler geocoding failed:', error);
+    return null;
+  }
+}
+
+function renderMapError(message) {
+  const mapElement = document.getElementById('serviceMap');
+  if (!mapElement) return;
+  mapElement.innerHTML = `
+    <div class="flex items-center justify-center h-full text-sm text-gray-600 px-4 text-center">
+      ${message}
+    </div>
+  `;
+}
+
+function clearRouteSummary() {
+  const existing = document.getElementById('routeSummary');
+  if (existing) existing.remove();
+}
+
+function renderRouteSummary(distanceMeters, durationSeconds) {
+  clearRouteSummary();
+  const mapElement = document.getElementById('serviceMap');
+  if (!mapElement) return;
+
+  const distanceText = distanceMeters
+    ? `${(distanceMeters / 1000).toFixed(1)} km`
+    : 'Unknown distance';
+  const durationText = durationSeconds
+    ? `${Math.round(durationSeconds / 60)} min`
+    : 'Unknown ETA';
+
+  const summary = document.createElement('div');
+  summary.id = 'routeSummary';
+  summary.className = 'absolute top-4 left-4 right-4 bg-white/95 border border-gray-200 rounded-3xl p-4 shadow-lg backdrop-blur-sm text-sm text-gray-800';
+  summary.innerHTML = `
+    <div class="flex items-center justify-between gap-4">
+      <div>
+        <p class="font-semibold text-gray-900">Route to provider</p>
+        <p class="text-xs text-gray-600">${distanceText} · ${durationText}</p>
+      </div>
+      <div class="inline-flex items-center rounded-full bg-blue-600 text-white px-3 py-1 text-xs font-semibold">Live route</div>
+    </div>
+  `;
+
+  mapElement.appendChild(summary);
+}
+
+function getCurrentPosition() {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      resolve(null);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve([
+          Number(position.coords.longitude),
+          Number(position.coords.latitude),
+        ]);
+      },
+      () => {
+        resolve(null);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+    );
+  });
+}
+
+async function getDirections(origin, destination) {
+  if (!MAPTILER_KEY) {
+    return null;
+  }
+
+  try {
+    const response = await fetch(
+      `https://api.maptiler.com/directions/driving/car.json?key=${MAPTILER_KEY}&start=${origin[0]},${origin[1]}&end=${destination[0]},${destination[1]}&geometries=geojson&overview=full`);
+    const data = await response.json();
+
+    if (!data?.routes?.length) {
+      return null;
+    }
+
+    return data.routes[0];
+  } catch (error) {
+    console.error('MapTiler directions failed:', error);
+    return null;
+  }
+}
+
+async function renderServiceMap(service, providerProfile) {
+  const mapElement = document.getElementById('serviceMap');
+  if (!mapElement) return;
+
+  const providerLocation = providerProfile?.location || service.location;
+  if (!providerLocation) {
+    renderMapError('Provider location is not available.');
+    return;
+  }
+
+  if (!MAPTILER_KEY) {
+    renderMapError('MapTiler API key not set. Add window.MAPTILER_API_KEY to service.html.');
+    return;
+  }
+
+  let destination = null;
+  if (service.latitude && service.longitude) {
+    destination = [Number(service.longitude), Number(service.latitude)];
+  } else {
+    destination = await geocodeServiceLocation(providerLocation);
+  }
+
+  if (!destination) {
+    renderMapError('Unable to show the map for this location.');
+    return;
+  }
+
+  const origin = await getCurrentPosition();
+  const route = origin ? await getDirections(origin, destination) : null;
+
+  mapElement.innerHTML = '';
+  try {
+    const map = new maplibregl.Map({
+      container: mapElement,
+      style: MAPTILER_STYLE_URL,
+      center: origin || destination,
+      zoom: origin ? 11 : 12,
+    });
+
+    map.on('load', () => {
+      if (route?.geometry?.coordinates) {
+        map.addSource('route', {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            geometry: route.geometry,
+          },
+        });
+
+        map.addLayer({
+          id: 'routeLine',
+          type: 'line',
+          source: 'route',
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round',
+          },
+          paint: {
+            'line-color': '#2563eb',
+            'line-width': 6,
+            'line-opacity': 0.85,
+          },
+        });
+
+        const bounds = route.geometry.coordinates.reduce(
+          (b, coord) => b.extend(coord),
+          new maplibregl.LngLatBounds(route.geometry.coordinates[0], route.geometry.coordinates[0])
+        );
+
+        bounds.extend(destination);
+        if (origin) bounds.extend(origin);
+        map.fitBounds(bounds, { padding: 60 });
+
+        renderRouteSummary(route.distance, route.duration);
+      }
+
+      new maplibregl.Marker({ color: '#0000ff' })
+        .setLngLat(destination)
+        .setPopup(new maplibregl.Popup({ offset: 25 }).setText(providerLocation))
+        .addTo(map);
+
+      if (origin) {
+        new maplibregl.Marker({ color: '#10b981' })
+          .setLngLat(origin)
+          .setPopup(new maplibregl.Popup({ offset: 25 }).setText('Your current position'))
+          .addTo(map);
+      } else {
+        renderMapError('Allow location access to see the route like a ride-hailing app.');
+      }
+    });
+  } catch (error) {
+    console.error('Failed to initialize map:', error);
+    renderMapError('Failed to initialize the map.');
+  }
 }
 
 // ============================

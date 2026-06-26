@@ -168,7 +168,7 @@
 </div>
 
 <!-- ================= MAIN ================= -->
-<main class="pt-28 px-4 pb-12 max-w-3xl mx-auto">
+<main class="pt-28 px-4 pb-12 max-w-3xl sm:max-w-2xl mx-auto">
 
   <!-- PROFILE PICTURE -->
   <div class="flex flex-col items-center mb-8">
@@ -217,7 +217,7 @@
   </div>
 
   <!-- PROFILE FORM -->
-  <div class="bg-white p-6 rounded-2xl shadow">
+  <div class="bg-white p-4 sm:p-6 rounded-2xl shadow max-w-full">
 
     <h2 class="text-2xl font-bold mb-6">
       Profile Information
@@ -253,16 +253,24 @@
       </div>
 
       <div>
-        <label for="phone"
+        <label for="phoneLocal"
           class="block text-gray-700 font-semibold mb-2">
           Phone
         </label>
 
-        <input
-          type="tel"
-          id="phone"
-          class="w-full p-3 border rounded-lg"
-          placeholder="+234 123 456 7890">
+        <div class="flex gap-2 min-w-0 items-center">
+          <input
+            type="text"
+            id="countryCode"
+            class="w-24 sm:w-36 px-2 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+            value="+234"
+            readonly>
+          <input
+            type="tel"
+            id="phoneLocal"
+            class="flex-1 min-w-0 px-2 py-2 sm:px-3 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+            placeholder="812 345 6789">
+        </div>
       </div>
 
       <div>
@@ -280,7 +288,7 @@
 
       <button
         type="submit" 
-        class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition">
+        class="w-full bg-blue-600 text-white py-2 sm:py-3 rounded-lg font-semibold hover:bg-blue-700 transition">
         Update Profile
       </button>
 
